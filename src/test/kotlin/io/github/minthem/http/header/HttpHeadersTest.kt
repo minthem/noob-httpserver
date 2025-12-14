@@ -5,6 +5,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
 
 class HttpHeadersTest {
 
@@ -95,5 +96,29 @@ class HttpHeadersTest {
         val headers = MutableHttpHeaders(mapOf("Cache-Control" to listOf("no-cache")))
         assertTrue("cache-control" in headers)
         assertEquals(listOf("no-cache"), headers["CACHE-CONTROL"])
+    }
+
+    @Test
+    fun `headers equality`() {
+        val headers1 = ImmutableHttpHeaders(
+            mapOf(
+                "Cache-Control" to listOf("no-cache"),
+                "Content-Type" to listOf("application/json")
+            )
+        )
+        val headers2 = ImmutableHttpHeaders(
+            mapOf(
+                "Cache-Control" to listOf("no-cache"),
+                "Content-Type" to listOf("application/json")
+            )
+        )
+        assertEquals(headers1, headers2)
+    }
+
+    @Test
+    fun `headers inequality`() {
+        val headers1 = ImmutableHttpHeaders(mapOf("Cache-Control" to listOf("no-cache")))
+        val headers2 = ImmutableHttpHeaders(mapOf("Content-Type" to listOf("application/json")))
+        assertNotEquals(headers1, headers2)
     }
 }

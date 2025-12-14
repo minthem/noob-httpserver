@@ -25,6 +25,18 @@ sealed class HttpHeaders protected constructor(
     operator fun get(name: String): List<String>? = values[name]
 
     operator fun contains(name: String): Boolean = values.containsKey(name)
+
+    override fun equals(other: Any?): Boolean {
+        if(this === other) return true
+        if(other !is HttpHeaders) return false
+        return values == other.values
+    }
+
+    override fun hashCode(): Int {
+        return values.hashCode()
+    }
+
+    override fun toString(): String = values.toString()
 }
 
 class ImmutableHttpHeaders(initial: Map<String, List<String>>) : HttpHeaders(initial)
