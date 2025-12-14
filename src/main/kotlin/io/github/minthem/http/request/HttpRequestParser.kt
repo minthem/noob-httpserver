@@ -54,8 +54,9 @@ internal class HttpRequestParser {
         private val socket: ReadableByteChannel, private val buffer: ByteBuffer
     ) {
         fun readLine(): String {
+            var startPos = 0
             while (true) {
-                val lineEnd = findLineEnd(buffer.array(), 0, buffer.position())
+                val lineEnd = findLineEnd(buffer, startPos, buffer.position())
                 if (lineEnd != -1) {
                     val line = String(buffer.array(), 0, lineEnd - 1, Charsets.US_ASCII)
                     buffer.flip()
@@ -65,6 +66,7 @@ internal class HttpRequestParser {
                     return line
                 }
 
+                startPos = (buffer.position() - 2).coerceAtLeast(0)
                 val readN = socket.read(buffer)
                 if (readN == -1) {
                     throw IllegalStateException("Unexpected end of stream")
@@ -89,11 +91,11 @@ internal class HttpRequestParser {
 
         }
 
-        private fun findLineEnd(array: ByteArray, begin: Int, end: Int): Int {
+        private fun findLineEnd(array: ByteBuffer, begin: Int, end: Int): Int {
             val cr = '\r'.code.toByte()
             val lf = '\n'.code.toByte()
             for (i in begin until end - 1) {
-                if (array[i] == cr && array[i + 1] == lf) {
+                if (array.get(i) == cr && array.get(i + 1) == lf) {
                     return i + 1
                 }
             }
