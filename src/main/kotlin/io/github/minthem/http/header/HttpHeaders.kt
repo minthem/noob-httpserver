@@ -9,12 +9,14 @@ sealed class HttpHeaders protected constructor(
 
     protected open val values: Map<String, List<String>> = run {
         val map = TreeMap<String, List<String>>(String.CASE_INSENSITIVE_ORDER)
-        initial.forEach { (key, value) ->
+        initial.forEach { (key, values) ->
+            isValidHeader(key, values)
+
             val existing = map[key]
             if (existing != null) {
-                map[key] = existing + value
+                map[key] = existing + values
             } else {
-                map[key] = value.toList()
+                map[key] = values.toList()
             }
         }
         map
@@ -27,8 +29,8 @@ sealed class HttpHeaders protected constructor(
     operator fun contains(name: String): Boolean = values.containsKey(name)
 
     override fun equals(other: Any?): Boolean {
-        if(this === other) return true
-        if(other !is HttpHeaders) return false
+        if (this === other) return true
+        if (other !is HttpHeaders) return false
         return values == other.values
     }
 
@@ -45,9 +47,11 @@ class MutableHttpHeaders(initial: Map<String, List<String>> = emptyMap()) : Http
 
     private val mutableValues = run {
         val map = TreeMap<String, MutableList<String>>(String.CASE_INSENSITIVE_ORDER)
-        initial.forEach { (key, value) ->
+        initial.forEach { (key, values) ->
+            isValidHeader(key, values)
+
             val existing = map[key] ?: mutableListOf()
-            existing.addAll(value)
+            existing.addAll(values)
             map[key] = existing
         }
         map
@@ -57,14 +61,38 @@ class MutableHttpHeaders(initial: Map<String, List<String>> = emptyMap()) : Http
         get() = mutableValues
 
     fun add(name: String, value: String) {
+        isValidHeader(name, value)
+
         mutableValues.getOrPut(name) { mutableListOf() }.add(value)
     }
 
     fun set(name: String, value: String) {
+        isValidHeader(name, value)
         mutableValues[name] = mutableListOf(value)
     }
 
     fun remove(name: String) {
         mutableValues.remove(name)
+    }
+}
+
+private fun isValidHeader(name: String, value: String) {
+    if (!HttpHeaderValidator.isValidFieldName(name)) {
+        throw IllegalArgumentException("Invalid header name: $name")
+    }
+    if (!HttpHeaderValidator.isValidHeaderValue(value)) throw IllegalArgumentException(
+        "Invalid header value: $value"
+    )
+}
+
+private fun isValidHeader(name: String, values: List<String>) {
+    if (!HttpHeaderValidator.isValidFieldName(name)) {
+        throw IllegalArgumentException("Invalid header name: $name")
+    }
+
+    values.forEach { value ->
+        if (!HttpHeaderValidator.isValidHeaderValue(value)) throw IllegalArgumentException(
+            "Invalid header value: $value"
+        )
     }
 }
