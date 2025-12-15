@@ -1,6 +1,7 @@
 package io.github.minthem.http.request
 
 import io.github.minthem.http.header.ImmutableHttpHeaders
+import org.junit.jupiter.api.assertThrows
 import java.io.ByteArrayInputStream
 import java.nio.ByteBuffer
 import kotlin.test.Test
@@ -36,7 +37,7 @@ class HttpRequestParserTest {
         )
 
         assertRequestEqualsIgnoringBody(expected, actual)
-        assertEquals(expected.body, actual.body)
+        assertEquals(expected.body, actual.body, "ボディがないリクエストではbodyがnullであることを期待")
     }
 
     @Test
@@ -68,7 +69,7 @@ class HttpRequestParserTest {
         )
 
         assertRequestEqualsIgnoringBody(expected, actual)
-        assertEquals(expected.body, actual.body)
+        assertEquals(expected.body, actual.body, "入力が分割されてもボディなしの場合はbodyがnullであることを期待")
     }
 
     @Test
@@ -101,9 +102,12 @@ class HttpRequestParserTest {
         )
 
         assertRequestEqualsIgnoringBody(expected, actual)
-        assertContentEquals(expected.body?.readAllBytes(), actual.body?.readAllBytes())
+        assertContentEquals(
+            expected.body?.readAllBytes(),
+            actual.body?.readAllBytes(),
+            "Content-Length分のボディが読み取れていることを期待"
+        )
     }
-
 
     @Test
     fun `parse should return a request with body is split across multiple reads`() {
@@ -136,13 +140,48 @@ class HttpRequestParserTest {
         )
 
         assertRequestEqualsIgnoringBody(expected, actual)
-        assertContentEquals(expected.body?.readAllBytes(), actual.body?.readAllBytes())
+        assertContentEquals(
+            expected.body?.readAllBytes(),
+            actual.body?.readAllBytes(),
+            "ボディが複数readに分割されても連結して読み取れることを期待"
+        )
+    }
+
+    @Test
+    fun `parse should throw an exception when header name is invalid`() {
+        val socketMock = ReadableByteMock(
+            listOf(
+                "GET /path HTTP/1.1\r\n".toByteArray(Charsets.US_ASCII),
+                "Invalid Host: localhost\r\n".toByteArray(Charsets.US_ASCII),
+                "Date: Sun Dec 14 19:14:13 JST 2025\r\n".toByteArray(Charsets.US_ASCII),
+                "\r\n".toByteArray(Charsets.US_ASCII)
+            )
+        )
+        val parser = HttpRequestParser()
+        val buffer = ByteBuffer.allocate(1024)
+        assertThrows<IllegalArgumentException> { parser.parse(socketMock, buffer) }
+    }
+
+    @Test
+    fun `parse should throw an exception when header value is invalid`() {
+        val socketMock = ReadableByteMock(
+            listOf(
+                "GET /path HTTP/1.1\r\n".toByteArray(Charsets.US_ASCII),
+                "Host: Invalid Value\r\r\n".toByteArray(Charsets.US_ASCII),
+                "Date: Sun Dec 14 19:14:13 JST 2025\r\n".toByteArray(Charsets.US_ASCII),
+                "\r\n".toByteArray(Charsets.US_ASCII)
+            )
+        )
+
+        val parser = HttpRequestParser()
+        val buffer = ByteBuffer.allocate(1024)
+        assertThrows<IllegalArgumentException> { parser.parse(socketMock, buffer) }
     }
 
     fun assertRequestEqualsIgnoringBody(expected: HttpRequest, actual: HttpRequest) {
-        assertEquals(expected.method, actual.method)
-        assertEquals(expected.path, actual.path)
-        assertEquals(expected.protocol, actual.protocol)
-        assertEquals(expected.headers, actual.headers)
+        assertEquals(expected.method, actual.method, "HTTPメソッドが一致することを期待")
+        assertEquals(expected.path, actual.path, "パスが一致することを期待")
+        assertEquals(expected.protocol, actual.protocol, "プロトコル(HTTPバージョン)が一致することを期待")
+        assertEquals(expected.headers, actual.headers, "ヘッダーが一致することを期待")
     }
 }
