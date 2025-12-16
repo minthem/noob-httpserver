@@ -33,11 +33,11 @@ class HttpRequestParserTest {
                     "Date" to listOf("Sun Dec 14 19:14:13 JST 2025")
                 )
             ),
-            null
+            EmptyRequestBody()
         )
 
         assertRequestEqualsIgnoringBody(expected, actual)
-        assertEquals(expected.body, actual.body, "ボディがないリクエストではbodyがnullであることを期待")
+        assertEquals(expected.body.contentLength(), actual.body.contentLength(), "ボディがないリクエストではbodyがnullであることを期待")
     }
 
     @Test
@@ -65,11 +65,11 @@ class HttpRequestParserTest {
                     "Date" to listOf("Sun Dec 14 19:14:13 JST 2025")
                 )
             ),
-            null
+            EmptyRequestBody()
         )
 
         assertRequestEqualsIgnoringBody(expected, actual)
-        assertEquals(expected.body, actual.body, "入力が分割されてもボディなしの場合はbodyがnullであることを期待")
+        assertEquals(expected.body.contentLength(), actual.body.contentLength(), "入力が分割されてもボディなしの場合はbodyがnullであることを期待")
     }
 
     @Test
@@ -98,13 +98,13 @@ class HttpRequestParserTest {
                     "Content-Length" to listOf("11")
                 )
             ),
-            ByteArrayInputStream("Hello World".toByteArray(Charsets.US_ASCII))
+            InMemoryRequestBody("Hello World".toByteArray(Charsets.US_ASCII))
         )
 
         assertRequestEqualsIgnoringBody(expected, actual)
         assertContentEquals(
-            expected.body?.readAllBytes(),
-            actual.body?.readAllBytes(),
+            expected.body.openStream().use { it.readAllBytes() },
+            actual.body.openStream().use { it.readAllBytes() },
             "Content-Length分のボディが読み取れていることを期待"
         )
     }
@@ -136,13 +136,13 @@ class HttpRequestParserTest {
                     "Content-Length" to listOf("11")
                 )
             ),
-            ByteArrayInputStream("Hello World".toByteArray(Charsets.US_ASCII))
+            InMemoryRequestBody("Hello World".toByteArray(Charsets.US_ASCII))
         )
 
         assertRequestEqualsIgnoringBody(expected, actual)
         assertContentEquals(
-            expected.body?.readAllBytes(),
-            actual.body?.readAllBytes(),
+            expected.body.openStream().use { it.readAllBytes() },
+            actual.body.openStream().use { it.readAllBytes() },
             "ボディが複数readに分割されても連結して読み取れることを期待"
         )
     }
