@@ -2,8 +2,6 @@ package io.github.minthem.http.request
 
 import io.github.minthem.http.header.HttpHeaders
 import io.github.minthem.http.header.MutableHttpHeaders
-import java.io.ByteArrayInputStream
-import java.io.InputStream
 import java.nio.ByteBuffer
 import java.nio.channels.ReadableByteChannel
 
@@ -41,13 +39,13 @@ internal class HttpRequestParser {
         return headers
     }
 
-    private fun readBody(socketBuffer: SocketChannelBuffer, headers: HttpHeaders): InputStream? {
+    private fun readBody(socketBuffer: SocketChannelBuffer, headers: HttpHeaders): RequestBody {
         val contentLength = headers.getFirst("Content-Length")?.toLongOrNull() ?: 0
         if (contentLength == 0L) {
-            return null
+            return EmptyRequestBody()
         }
 
-        return socketBuffer.readNBytes(contentLength)
+        return InMemoryRequestBody(socketBuffer.readNBytes(contentLength))
     }
 
     private class SocketChannelBuffer(
@@ -74,7 +72,7 @@ internal class HttpRequestParser {
             }
         }
 
-        fun readNBytes(n: Long): InputStream {
+        fun readNBytes(n: Long): ByteArray {
             val array = ByteArray(n.toInt())
 
             while (buffer.position() < n) {
@@ -87,8 +85,7 @@ internal class HttpRequestParser {
             buffer.flip()
             buffer.get(array)
             buffer.compact()
-            return ByteArrayInputStream(array)
-
+            return array
         }
 
         private fun findLineEnd(array: ByteBuffer, begin: Int, end: Int): Int {
