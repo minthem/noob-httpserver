@@ -16,4 +16,11 @@ class ReadableByteMock(private var bytes: List<ByteArray>) : ReadableByteChannel
     override fun isOpen(): Boolean = true
 
     override fun close() {}
+
+    companion object {
+        fun fromStrings(strings: List<String>): ReadableByteMock {
+            val bytes = strings.map { it.toByteArray() }
+            return ReadableByteMock(bytes)
+        }
+    }
 }

@@ -2,7 +2,6 @@ package io.github.minthem.http.request
 
 import io.github.minthem.http.header.ImmutableHttpHeaders
 import org.junit.jupiter.api.assertThrows
-import java.io.ByteArrayInputStream
 import java.nio.ByteBuffer
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
@@ -12,17 +11,17 @@ class HttpRequestParserTest {
 
     @Test
     fun `parse should return a request`() {
-        val socketMock = ReadableByteMock(
+        val socketMock = ReadableByteMock.fromStrings(
             listOf(
-                "GET /path HTTP/1.1\r\n".toByteArray(Charsets.US_ASCII),
-                "Host: localhost\r\n".toByteArray(Charsets.US_ASCII),
-                "Date: Sun Dec 14 19:14:13 JST 2025\r\n".toByteArray(Charsets.US_ASCII),
-                "\r\n".toByteArray(Charsets.US_ASCII)
+                "GET /path HTTP/1.1\r\n",
+                "Host: localhost\r\n",
+                "Date: Sun Dec 14 19:14:13 JST 2025\r\n",
+                "\r\n"
             )
         )
 
         val parser = HttpRequestParser()
-        val buffer = ByteBuffer.allocate(1024)
+        val buffer = ByteBuffer.allocate(1024).flip()
         val actual = parser.parse(socketMock, buffer)
 
         val expected = HttpRequest(
@@ -37,24 +36,28 @@ class HttpRequestParserTest {
         )
 
         assertRequestEqualsIgnoringBody(expected, actual)
-        assertEquals(expected.body.contentLength(), actual.body.contentLength(), "ボディがないリクエストではbodyがnullであることを期待")
+        assertEquals(
+            expected.body.contentLength(),
+            actual.body.contentLength(),
+            "ボディがないリクエストではbodyがnullであることを期待"
+        )
     }
 
     @Test
     fun `parse should return a request when input is split across multiple reads`() {
-        val socketMock = ReadableByteMock(
+        val socketMock = ReadableByteMock.fromStrings(
             listOf(
-                "GET /pat".toByteArray(Charsets.US_ASCII),
-                "h HTTP/1.1\r\nHos".toByteArray(Charsets.US_ASCII),
-                "t: localhost\r\nDate: ".toByteArray(Charsets.US_ASCII),
-                "Sun Dec 14 19:14".toByteArray(Charsets.US_ASCII),
-                ":13 JST 2025\r".toByteArray(Charsets.US_ASCII),
-                "\n\r\n".toByteArray(Charsets.US_ASCII)
+                "GET /pat",
+                "h HTTP/1.1\r\nHos",
+                "t: localhost\r\nDate: ",
+                "Sun Dec 14 19:14",
+                ":13 JST 2025\r",
+                "\n\r\n"
             )
         )
 
         val parser = HttpRequestParser()
-        val buffer = ByteBuffer.allocate(1024)
+        val buffer = ByteBuffer.allocate(1024).flip()
         val actual = parser.parse(socketMock, buffer)
 
         val expected = HttpRequest(
@@ -69,24 +72,28 @@ class HttpRequestParserTest {
         )
 
         assertRequestEqualsIgnoringBody(expected, actual)
-        assertEquals(expected.body.contentLength(), actual.body.contentLength(), "入力が分割されてもボディなしの場合はbodyがnullであることを期待")
+        assertEquals(
+            expected.body.contentLength(),
+            actual.body.contentLength(),
+            "入力が分割されてもボディなしの場合はbodyがnullであることを期待"
+        )
     }
 
     @Test
     fun `parse should return a request with body`() {
-        val socketMock = ReadableByteMock(
+        val socketMock = ReadableByteMock.fromStrings(
             listOf(
-                "POST /path HTTP/1.1\r\n".toByteArray(Charsets.US_ASCII),
-                "Host: localhost\r\n".toByteArray(Charsets.US_ASCII),
-                "Date: Sun Dec 14 19:14:13 JST 2025\r\n".toByteArray(Charsets.US_ASCII),
-                "Content-Length: 11\r\n".toByteArray(Charsets.US_ASCII),
-                "\r\n".toByteArray(Charsets.US_ASCII),
-                "Hello World".toByteArray(Charsets.US_ASCII)
+                "POST /path HTTP/1.1\r\n",
+                "Host: localhost\r\n",
+                "Date: Sun Dec 14 19:14:13 JST 2025\r\n",
+                "Content-Length: 11\r\n",
+                "\r\n",
+                "Hello World"
             )
         )
 
         val parser = HttpRequestParser()
-        val buffer = ByteBuffer.allocate(1024)
+        val buffer = ByteBuffer.allocate(1024).flip()
         val actual = parser.parse(socketMock, buffer)
 
         val expected = HttpRequest(
@@ -111,20 +118,20 @@ class HttpRequestParserTest {
 
     @Test
     fun `parse should return a request with body is split across multiple reads`() {
-        val socketMock = ReadableByteMock(
+        val socketMock = ReadableByteMock.fromStrings(
             listOf(
-                "POST /pat".toByteArray(Charsets.US_ASCII),
-                "h HTTP/1.1\r\nHos".toByteArray(Charsets.US_ASCII),
-                "t: localhost\r\nDate: ".toByteArray(Charsets.US_ASCII),
-                "Sun Dec 14 19:14".toByteArray(Charsets.US_ASCII),
-                ":13 JST 2025\r".toByteArray(Charsets.US_ASCII),
-                "\nContent-Length: 11\r\n\r\nHello ".toByteArray(Charsets.US_ASCII),
-                "World".toByteArray(Charsets.US_ASCII)
+                "POST /pat",
+                "h HTTP/1.1\r\nHos",
+                "t: localhost\r\nDate: ",
+                "Sun Dec 14 19:14",
+                ":13 JST 2025\r",
+                "\nContent-Length: 11\r\n\r\nHello ",
+                "World"
             )
         )
 
         val parser = HttpRequestParser()
-        val buffer = ByteBuffer.allocate(1024)
+        val buffer = ByteBuffer.allocate(1024).flip()
         val actual = parser.parse(socketMock, buffer)
 
         val expected = HttpRequest(
@@ -149,32 +156,32 @@ class HttpRequestParserTest {
 
     @Test
     fun `parse should throw an exception when header name is invalid`() {
-        val socketMock = ReadableByteMock(
+        val socketMock = ReadableByteMock.fromStrings(
             listOf(
-                "GET /path HTTP/1.1\r\n".toByteArray(Charsets.US_ASCII),
-                "Invalid Host: localhost\r\n".toByteArray(Charsets.US_ASCII),
-                "Date: Sun Dec 14 19:14:13 JST 2025\r\n".toByteArray(Charsets.US_ASCII),
-                "\r\n".toByteArray(Charsets.US_ASCII)
+                "GET /path HTTP/1.1\r\n",
+                "Invalid Host: localhost\r\n",
+                "Date: Sun Dec 14 19:14:13 JST 2025\r\n",
+                "\r\n"
             )
         )
         val parser = HttpRequestParser()
-        val buffer = ByteBuffer.allocate(1024)
+        val buffer = ByteBuffer.allocate(1024).flip()
         assertThrows<IllegalArgumentException> { parser.parse(socketMock, buffer) }
     }
 
     @Test
     fun `parse should throw an exception when header value is invalid`() {
-        val socketMock = ReadableByteMock(
+        val socketMock = ReadableByteMock.fromStrings(
             listOf(
-                "GET /path HTTP/1.1\r\n".toByteArray(Charsets.US_ASCII),
-                "Host: Invalid Value\r\r\n".toByteArray(Charsets.US_ASCII),
-                "Date: Sun Dec 14 19:14:13 JST 2025\r\n".toByteArray(Charsets.US_ASCII),
-                "\r\n".toByteArray(Charsets.US_ASCII)
+                "GET /path HTTP/1.1\r\n",
+                "Host: Invalid Value\r\r\n",
+                "Date: Sun Dec 14 19:14:13 JST 2025\r\n",
+                "\r\n"
             )
         )
 
         val parser = HttpRequestParser()
-        val buffer = ByteBuffer.allocate(1024)
+        val buffer = ByteBuffer.allocate(1024).flip()
         assertThrows<IllegalArgumentException> { parser.parse(socketMock, buffer) }
     }
 
