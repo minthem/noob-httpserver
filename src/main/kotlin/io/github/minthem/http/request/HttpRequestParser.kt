@@ -7,6 +7,9 @@ import java.nio.channels.ReadableByteChannel
 
 internal class HttpRequestParser {
 
+    /**
+     * バッファはreader modeで渡すこと
+     */
     fun parse(channel: ReadableByteChannel, buffer: ByteBuffer): HttpRequest {
         val socketBuffer = SocketChannelBuffer(channel, buffer)
         val (method, path, protocol) = parseRequestLine(socketBuffer)
@@ -52,47 +55,49 @@ internal class HttpRequestParser {
         private val socket: ReadableByteChannel, private val buffer: ByteBuffer
     ) {
         fun readLine(): String {
-            var startPos = 0
             while (true) {
-                val lineEnd = findLineEnd(buffer, startPos, buffer.position())
+                val lineEnd = findLineEnd()
                 if (lineEnd != -1) {
-                    val line = String(buffer.array(), 0, lineEnd - 1, Charsets.US_ASCII)
-                    buffer.flip()
-                    buffer.position(lineEnd + 1)
-                    buffer.compact()
+                    val stringLen = lineEnd - buffer.position() + 1
+                    val lineBuffer = ByteArray(stringLen)
+                    buffer.get(lineBuffer)
 
-                    return line
+                    return lineBuffer.toString(Charsets.US_ASCII).removeSuffix("\r\n")
                 }
-
-                startPos = (buffer.position() - 2).coerceAtLeast(0)
+                // ない場合は、未読み取り部分を前詰めしてソケットから取得する
+                buffer.compact()
                 val readN = socket.read(buffer)
                 if (readN == -1) {
                     throw IllegalStateException("Unexpected end of stream")
                 }
+                buffer.flip()
             }
         }
 
         fun readNBytes(n: Long): ByteArray {
             val array = ByteArray(n.toInt())
+            var readBytes = buffer.remaining()
+            buffer.get(array, 0, readBytes)
 
-            while (buffer.position() < n) {
+            while (readBytes < n) {
+                buffer.compact()
                 val readN = socket.read(buffer)
                 if (readN == -1) {
                     throw IllegalStateException("Unexpected end of stream")
                 }
+                buffer.flip()
+                buffer.get(array, readBytes, readN)
+                readBytes += readN
             }
 
-            buffer.flip()
-            buffer.get(array)
-            buffer.compact()
             return array
         }
 
-        private fun findLineEnd(array: ByteBuffer, begin: Int, end: Int): Int {
+        private fun findLineEnd(): Int {
             val cr = '\r'.code.toByte()
             val lf = '\n'.code.toByte()
-            for (i in begin until end - 1) {
-                if (array.get(i) == cr && array.get(i + 1) == lf) {
+            for (i in buffer.position() until buffer.limit() - 1) {
+                if (buffer.get(i) == cr && buffer.get(i + 1) == lf) {
                     return i + 1
                 }
             }
