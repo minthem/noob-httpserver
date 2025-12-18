@@ -1,4 +1,4 @@
-package io.github.minthem.http.header
+package io.github.minthem.noobhttpserver.http.header
 
 import java.util.TreeMap
 
