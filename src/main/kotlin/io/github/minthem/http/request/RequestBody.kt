@@ -1,4 +1,4 @@
-package io.github.minthem.http.request
+package io.github.minthem.noobhttpserver.http.request
 
 import java.io.BufferedInputStream
 import java.io.Closeable
