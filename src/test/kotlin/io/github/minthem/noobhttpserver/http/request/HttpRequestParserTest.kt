@@ -2,6 +2,9 @@ package io.github.minthem.noobhttpserver.http.request
 
 import io.github.minthem.noobhttpserver.http.header.ImmutableHttpHeaders
 import org.junit.jupiter.api.assertThrows
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.io.InputStream
 import java.nio.ByteBuffer
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
@@ -32,13 +35,13 @@ class HttpRequestParserTest {
                     "Date" to listOf("Sun Dec 14 19:14:13 JST 2025")
                 )
             ),
-            EmptyRequestBody()
+            InputStream.nullInputStream()
         )
 
         assertRequestEqualsIgnoringBody(expected, actual)
         assertEquals(
-            expected.body.contentLength(),
-            actual.body.contentLength(),
+            0,
+            actual.bodyStream.readAllBytes().size,
             "ボディがないリクエストではbodyがnullであることを期待"
         )
     }
@@ -68,13 +71,13 @@ class HttpRequestParserTest {
                     "Date" to listOf("Sun Dec 14 19:14:13 JST 2025")
                 )
             ),
-            EmptyRequestBody()
+            InputStream.nullInputStream()
         )
 
         assertRequestEqualsIgnoringBody(expected, actual)
         assertEquals(
-            expected.body.contentLength(),
-            actual.body.contentLength(),
+            0,
+            actual.bodyStream.readAllBytes().size,
             "入力が分割されてもボディなしの場合はbodyがnullであることを期待"
         )
     }
@@ -105,13 +108,13 @@ class HttpRequestParserTest {
                     "Content-Length" to listOf("11")
                 )
             ),
-            InMemoryRequestBody("Hello World".toByteArray(Charsets.US_ASCII))
+            ByteArrayInputStream("Hello World".toByteArray(Charsets.US_ASCII))
         )
 
         assertRequestEqualsIgnoringBody(expected, actual)
         assertContentEquals(
-            expected.body.openStream().use { it.readAllBytes() },
-            actual.body.openStream().use { it.readAllBytes() },
+            expected.bodyStream.readAllBytes(),
+            actual.bodyStream.readAllBytes(),
             "Content-Length分のボディが読み取れていることを期待"
         )
     }
@@ -143,13 +146,13 @@ class HttpRequestParserTest {
                     "Content-Length" to listOf("11")
                 )
             ),
-            InMemoryRequestBody("Hello World".toByteArray(Charsets.US_ASCII))
+            ByteArrayInputStream("Hello World".toByteArray(Charsets.US_ASCII))
         )
 
         assertRequestEqualsIgnoringBody(expected, actual)
         assertContentEquals(
-            expected.body.openStream().use { it.readAllBytes() },
-            actual.body.openStream().use { it.readAllBytes() },
+            expected.bodyStream.readAllBytes(),
+            actual.bodyStream.readAllBytes(),
             "ボディが複数readに分割されても連結して読み取れることを期待"
         )
     }
