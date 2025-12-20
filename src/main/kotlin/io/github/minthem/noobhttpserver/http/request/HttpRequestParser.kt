@@ -2,7 +2,10 @@ package io.github.minthem.noobhttpserver.http.request
 
 import io.github.minthem.noobhttpserver.http.header.HttpHeaders
 import io.github.minthem.noobhttpserver.http.header.MutableHttpHeaders
+import io.github.minthem.noobhttpserver.http.socket.SocketReadBuffer
+import java.io.InputStream
 import java.nio.ByteBuffer
+import java.nio.channels.Channels
 import java.nio.channels.ReadableByteChannel
 
 internal class HttpRequestParser {
@@ -11,14 +14,14 @@ internal class HttpRequestParser {
      * バッファはreader modeで渡すこと
      */
     fun parse(channel: ReadableByteChannel, buffer: ByteBuffer): HttpRequest {
-        val socketBuffer = SocketChannelBuffer(channel, buffer)
+        val socketBuffer = SocketReadBuffer(channel, buffer)
         val (method, path, protocol) = parseRequestLine(socketBuffer)
         val headers = parseHeaders(socketBuffer)
-        val body = readBody(socketBuffer, headers)
-        return HttpRequest(method, path, protocol, headers, body)
+        val stream = getInputStreamForRequestBody(socketBuffer, headers)
+        return HttpRequest(method, path, protocol, headers, stream)
     }
 
-    private fun parseRequestLine(socketBuffer: SocketChannelBuffer): Triple<String, String, String> {
+    private fun parseRequestLine(socketBuffer: SocketReadBuffer): Triple<String, String, String> {
         val requestLine = socketBuffer.readLine()
         val parts = requestLine.split(" ")
         if (parts.size != 3) {
@@ -28,7 +31,7 @@ internal class HttpRequestParser {
         return Triple(parts[0], parts[1], parts[2])
     }
 
-    private fun parseHeaders(socketBuffer: SocketChannelBuffer): HttpHeaders {
+    private fun parseHeaders(socketBuffer: SocketReadBuffer): HttpHeaders {
         val headers = MutableHttpHeaders()
         while (true) {
             val line = socketBuffer.readLine()
@@ -42,67 +45,31 @@ internal class HttpRequestParser {
         return headers
     }
 
-    private fun readBody(socketBuffer: SocketChannelBuffer, headers: HttpHeaders): RequestBody {
+    private fun getInputStreamForRequestBody(socketBuffer: SocketReadBuffer, headers: HttpHeaders): InputStream {
         val contentLength = headers.getFirst("Content-Length")?.toLongOrNull() ?: 0
-        if (contentLength == 0L) {
-            return EmptyRequestBody()
+        val isChunked = headers.getFirst("Transfer-Encoding")?.equals("chunked", ignoreCase = true) ?: false
+
+        val source = when {
+            isChunked -> TODO("Chunked body is not supported yet")
+            else -> FixedLengthBodySource(socketBuffer, contentLength)
         }
 
-        return InMemoryRequestBody(socketBuffer.readNBytes(contentLength))
+        return BodySourceInputStream(source)
+    }
+}
+
+private class BodySourceInputStream(private val source: BodySource) : InputStream() {
+    override fun read(): Int {
+        val b = ByteArray(1)
+        val n = source.read(b, 0, 1)
+        return if (n == -1) {
+            -1
+        } else {
+            b[0].toInt() and 0xff
+        }
     }
 
-    private class SocketChannelBuffer(
-        private val socket: ReadableByteChannel, private val buffer: ByteBuffer
-    ) {
-        fun readLine(): String {
-            while (true) {
-                val lineEnd = findLineEnd()
-                if (lineEnd != -1) {
-                    val stringLen = lineEnd - buffer.position() + 1
-                    val lineBuffer = ByteArray(stringLen)
-                    buffer.get(lineBuffer)
-
-                    return lineBuffer.toString(Charsets.US_ASCII).removeSuffix("\r\n")
-                }
-                // ない場合は、未読み取り部分を前詰めしてソケットから取得する
-                buffer.compact()
-                val readN = socket.read(buffer)
-                if (readN == -1) {
-                    throw IllegalStateException("Unexpected end of stream")
-                }
-                buffer.flip()
-            }
-        }
-
-        fun readNBytes(n: Long): ByteArray {
-            val array = ByteArray(n.toInt())
-            var readBytes = buffer.remaining()
-            buffer.get(array, 0, readBytes)
-
-            while (readBytes < n) {
-                buffer.compact()
-                val readN = socket.read(buffer)
-                if (readN == -1) {
-                    throw IllegalStateException("Unexpected end of stream")
-                }
-                buffer.flip()
-                buffer.get(array, readBytes, readN)
-                readBytes += readN
-            }
-
-            return array
-        }
-
-        private fun findLineEnd(): Int {
-            val cr = '\r'.code.toByte()
-            val lf = '\n'.code.toByte()
-            for (i in buffer.position() until buffer.limit() - 1) {
-                if (buffer.get(i) == cr && buffer.get(i + 1) == lf) {
-                    return i + 1
-                }
-            }
-
-            return -1
-        }
+    override fun read(b: ByteArray, off: Int, len: Int): Int {
+        return source.read(b, off, len)
     }
 }
