@@ -1,32 +1,31 @@
 package io.github.minthem.noobhttpserver.http.header
 
-import java.util.TreeMap
-
 
 sealed class HttpHeaders protected constructor(
     initial: Map<String, List<String>> = emptyMap()
 ) {
 
     protected open val values: Map<String, List<String>> = run {
-        val map = TreeMap<String, List<String>>(String.CASE_INSENSITIVE_ORDER)
+        val map = HashMap<String, List<String>>()
         initial.forEach { (key, values) ->
             isValidHeader(key, values)
 
-            val existing = map[key]
+            val normalizedKey = normalizeKey(key)
+            val existing = map[normalizedKey]
             if (existing != null) {
-                map[key] = existing + values
+                map[normalizedKey] = existing + values
             } else {
-                map[key] = values.toList()
+                map[normalizedKey] = values.toList()
             }
         }
         map
     }
 
-    fun getFirst(name: String): String? = values[name]?.firstOrNull()
+    fun getFirst(key: String): String? = this[key]?.firstOrNull()
 
-    operator fun get(name: String): List<String>? = values[name]
+    operator fun get(key: String): List<String>? = values[normalizeKey(key)]
 
-    operator fun contains(name: String): Boolean = values.containsKey(name)
+    operator fun contains(key: String): Boolean = values.containsKey(normalizeKey(key))
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -46,13 +45,14 @@ class ImmutableHttpHeaders(initial: Map<String, List<String>>) : HttpHeaders(ini
 class MutableHttpHeaders(initial: Map<String, List<String>> = emptyMap()) : HttpHeaders(initial) {
 
     private val mutableValues = run {
-        val map = TreeMap<String, MutableList<String>>(String.CASE_INSENSITIVE_ORDER)
+        val map = HashMap<String, MutableList<String>>()
         initial.forEach { (key, values) ->
             isValidHeader(key, values)
+            val normalizedKey = normalizeKey(key)
 
-            val existing = map[key] ?: mutableListOf()
+            val existing = map[normalizedKey] ?: mutableListOf()
             existing.addAll(values)
-            map[key] = existing
+            map[normalizedKey] = existing
         }
         map
     }
@@ -60,19 +60,21 @@ class MutableHttpHeaders(initial: Map<String, List<String>> = emptyMap()) : Http
     override val values: Map<String, List<String>>
         get() = mutableValues
 
-    fun add(name: String, value: String) {
-        isValidHeader(name, value)
-
-        mutableValues.getOrPut(name) { mutableListOf() }.add(value)
+    fun add(key: String, value: String) {
+        isValidHeader(key, value)
+        val normalizedKey = normalizeKey(key)
+        mutableValues.getOrPut(normalizedKey) { mutableListOf() }.add(value)
     }
 
-    fun set(name: String, value: String) {
-        isValidHeader(name, value)
-        mutableValues[name] = mutableListOf(value)
+    fun set(key: String, value: String) {
+        isValidHeader(key, value)
+        val normalizedKey = normalizeKey(key)
+        mutableValues[normalizedKey] = mutableListOf(value)
     }
 
-    fun remove(name: String) {
-        mutableValues.remove(name)
+    fun remove(key: String) {
+        val normalizedKey = normalizeKey(key)
+        mutableValues.remove(normalizedKey)
     }
 }
 
@@ -96,3 +98,5 @@ private fun isValidHeader(name: String, values: List<String>) {
         )
     }
 }
+
+private fun normalizeKey(key: String) = key.lowercase()
