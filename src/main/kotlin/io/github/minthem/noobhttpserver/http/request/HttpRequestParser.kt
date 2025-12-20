@@ -5,7 +5,6 @@ import io.github.minthem.noobhttpserver.http.header.MutableHttpHeaders
 import io.github.minthem.noobhttpserver.http.socket.SocketReadBuffer
 import java.io.InputStream
 import java.nio.ByteBuffer
-import java.nio.channels.Channels
 import java.nio.channels.ReadableByteChannel
 
 internal class HttpRequestParser {
