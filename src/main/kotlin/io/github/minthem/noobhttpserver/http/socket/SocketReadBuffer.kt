@@ -2,7 +2,6 @@ package io.github.minthem.noobhttpserver.http.socket
 
 import java.nio.ByteBuffer
 import java.nio.channels.ReadableByteChannel
-import java.nio.channels.WritableByteChannel
 
 internal class SocketReadBuffer(
     private val socket: ReadableByteChannel, private val buffer: ByteBuffer
@@ -46,33 +45,6 @@ internal class SocketReadBuffer(
         buffer.get(arr, offset, canRead)
 
         return canRead
-    }
-
-    fun readBytes(dst: WritableByteChannel, length: Long) {
-        var totalReadBytes = 0L
-
-        while (totalReadBytes < length) {
-            if (!buffer.hasRemaining()) {
-                buffer.compact()
-                val readN = socket.read(buffer)
-                if (readN == -1) {
-                    throw IllegalStateException("Unexpected end of stream")
-                }
-                buffer.flip()
-            }
-
-            val remainingToRead = length - totalReadBytes
-            val oldLimit = buffer.limit()
-            
-            // バッファにある量と残りの必要量のうち、小さい方をリミットに設定
-            val canRead = buffer.remaining().toLong().coerceAtMost(remainingToRead).toInt()
-            
-            buffer.limit(buffer.position() + canRead)
-            val written = dst.write(buffer)
-            buffer.limit(oldLimit)
-
-            totalReadBytes += written
-        }
     }
 
     private fun findLineEnd(): Int {
