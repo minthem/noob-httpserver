@@ -3,7 +3,7 @@ package io.github.minthem.noobhttpserver.http.request
 import io.github.minthem.noobhttpserver.http.header.HttpHeaders
 import io.github.minthem.noobhttpserver.http.header.MutableHttpHeaders
 import io.github.minthem.noobhttpserver.http.socket.SocketReadBuffer
-import java.io.ByteArrayOutputStream
+import java.io.InputStream
 import java.nio.ByteBuffer
 import java.nio.channels.Channels
 import java.nio.channels.ReadableByteChannel
@@ -17,8 +17,8 @@ internal class HttpRequestParser {
         val socketBuffer = SocketReadBuffer(channel, buffer)
         val (method, path, protocol) = parseRequestLine(socketBuffer)
         val headers = parseHeaders(socketBuffer)
-        val body = readBody(socketBuffer, headers)
-        return HttpRequest(method, path, protocol, headers, body)
+        val stream = getInputStreamForRequestBody(socketBuffer, headers)
+        return HttpRequest(method, path, protocol, headers, stream)
     }
 
     private fun parseRequestLine(socketBuffer: SocketReadBuffer): Triple<String, String, String> {
@@ -45,16 +45,31 @@ internal class HttpRequestParser {
         return headers
     }
 
-    private fun readBody(socketBuffer: SocketReadBuffer, headers: HttpHeaders): RequestBody {
+    private fun getInputStreamForRequestBody(socketBuffer: SocketReadBuffer, headers: HttpHeaders): InputStream {
         val contentLength = headers.getFirst("Content-Length")?.toLongOrNull() ?: 0
-        if (contentLength == 0L) {
-            return EmptyRequestBody()
+        val isChunked = headers.getFirst("Transfer-Encoding")?.equals("chunked", ignoreCase = true) ?: false
+
+        val source = when {
+            isChunked -> TODO("Chunked body is not supported yet")
+            else -> FixedLengthBodySource(socketBuffer, contentLength)
         }
 
-        val byteArrayStream = ByteArrayOutputStream(contentLength.toInt())
-        val writer = Channels.newChannel(byteArrayStream)
-        socketBuffer.readBytes(writer, contentLength)
+        return BodySourceInputStream(source)
+    }
+}
 
-        return InMemoryRequestBody(byteArrayStream.toByteArray())
+private class BodySourceInputStream(private val source: BodySource) : InputStream() {
+    override fun read(): Int {
+        val b = ByteArray(1)
+        val n = source.read(b, 0, 1)
+        return if (n == -1) {
+            -1
+        } else {
+            b[0].toInt() and 0xff
+        }
+    }
+
+    override fun read(b: ByteArray, off: Int, len: Int): Int {
+        return source.read(b, off, len)
     }
 }

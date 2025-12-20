@@ -27,6 +27,27 @@ internal class SocketReadBuffer(
         }
     }
 
+    fun read(arr: ByteArray, offset: Int = 0, length: Int = arr.size): Int {
+        if (offset < 0 || length < 0 || offset + length > arr.size) {
+            throw IndexOutOfBoundsException("offset: $offset, length: $length, array size: ${arr.size}")
+        }
+        if (length == 0) return 0
+
+        // バッファが空ならソケットから補充する（少なくとも1回は試みる）
+        if (!buffer.hasRemaining()) {
+            buffer.compact()
+            val readN = socket.read(buffer)
+            if (readN == -1) return -1 // EOF
+            buffer.flip()
+        }
+
+        // バッファにある分と要求された分のうち、小さい方を読み出す
+        val canRead = minOf(buffer.remaining(), length)
+        buffer.get(arr, offset, canRead)
+
+        return canRead
+    }
+
     fun readBytes(dst: WritableByteChannel, length: Long) {
         var totalReadBytes = 0L
 
