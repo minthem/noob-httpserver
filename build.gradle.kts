@@ -1,8 +1,8 @@
 plugins {
-    kotlin("jvm") version "2.2.10"
+    kotlin("jvm") version "2.3.0"
 }
 
-group = "io.github.minthem.noobhttpserver"
+group = "io.github.minthem.noob-httpserver"
 version = "1.0-SNAPSHOT"
 
 repositories {
@@ -17,5 +17,5 @@ tasks.test {
     useJUnitPlatform()
 }
 kotlin {
-    jvmToolchain(21)
+    jvmToolchain(25)
 }
