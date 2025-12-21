@@ -5,21 +5,7 @@ sealed class HttpHeaders protected constructor(
     initial: Map<String, List<String>> = emptyMap()
 ) {
 
-    protected open val values: Map<String, List<String>> = run {
-        val map = HashMap<String, List<String>>()
-        initial.forEach { (key, values) ->
-            isValidHeader(key, values)
-
-            val normalizedKey = normalizeKey(key)
-            val existing = map[normalizedKey]
-            if (existing != null) {
-                map[normalizedKey] = existing + values
-            } else {
-                map[normalizedKey] = values.toList()
-            }
-        }
-        map
-    }
+    protected open val values: Map<String, List<String>> = initializeMap(initial)
 
     fun getFirst(key: String): String? = this[key]?.firstOrNull()
 
@@ -44,18 +30,7 @@ class ImmutableHttpHeaders(initial: Map<String, List<String>>) : HttpHeaders(ini
 
 class MutableHttpHeaders(initial: Map<String, List<String>> = emptyMap()) : HttpHeaders(initial) {
 
-    private val mutableValues = run {
-        val map = HashMap<String, MutableList<String>>()
-        initial.forEach { (key, values) ->
-            isValidHeader(key, values)
-            val normalizedKey = normalizeKey(key)
-
-            val existing = map[normalizedKey] ?: mutableListOf()
-            existing.addAll(values)
-            map[normalizedKey] = existing
-        }
-        map
-    }
+    private val mutableValues = initializeMap(initial)
 
     override val values: Map<String, List<String>>
         get() = mutableValues
@@ -85,6 +60,19 @@ private fun isValidHeader(name: String, value: String) {
     if (!HttpHeaderValidator.isValidHeaderValue(value)) throw IllegalArgumentException(
         "Invalid header value: $value"
     )
+}
+
+private fun initializeMap(initial: Map<String, List<String>>): MutableMap<String, MutableList<String>> {
+    val map = HashMap<String, MutableList<String>>()
+    initial.forEach { (key, values) ->
+        isValidHeader(key, values)
+        val normalizedKey = normalizeKey(key)
+
+        val existing = map[normalizedKey] ?: mutableListOf()
+        existing.addAll(values)
+        map[normalizedKey] = existing
+    }
+    return map
 }
 
 private fun isValidHeader(name: String, values: List<String>) {
