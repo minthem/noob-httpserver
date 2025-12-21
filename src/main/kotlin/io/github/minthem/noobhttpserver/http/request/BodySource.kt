@@ -80,6 +80,7 @@ internal class ChunkedBodySource(
                     if (chunkSize == 0L) {
                         state = State.READING_TRAILER
                     } else {
+                        chunkRemain = chunkSize
                         state = State.READING_CHUNK_DATA
                     }
                 }

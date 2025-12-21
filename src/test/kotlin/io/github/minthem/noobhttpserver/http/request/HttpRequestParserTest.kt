@@ -158,6 +158,91 @@ class HttpRequestParserTest {
     }
 
     @Test
+    fun `parse should return a request with transfer-encoding chunked`() {
+        val socketMock = ReadableByteMock.fromStrings(
+            listOf(
+                "POST /path HTTP/1.1\r\n",
+                "Host: localhost\r\n",
+                "Date: Sun Dec 14 19:14:13 JST 2025\r\n",
+                "Transfer-Encoding: chunked\r\n",
+                "\r\n",
+                "5\r\nHello\r\n",
+                "A\r\nHello Worl\r\n",
+                "1\r\nd\r\n",
+                "0\r\n\r\n"
+            )
+        )
+
+        val parser = HttpRequestParser()
+        val buffer = ByteBuffer.allocate(1024).flip()
+        val actual = parser.parse(socketMock, buffer)
+
+        val expected = HttpRequest(
+            "POST", "/path", "HTTP/1.1",
+            ImmutableHttpHeaders(
+                mapOf(
+                    "Host" to listOf("localhost"),
+                    "Date" to listOf("Sun Dec 14 19:14:13 JST 2025"),
+                    "Transfer-Encoding" to listOf("chunked")
+                )
+            ),
+            bodyStream = ByteArrayInputStream("HelloHello World".toByteArray(Charsets.US_ASCII))
+        )
+
+        assertRequestEqualsIgnoringBody(expected, actual)
+        assertContentEquals(
+            expected.bodyStream.readAllBytes(),
+            actual.bodyStream.readAllBytes(),
+        )
+    }
+
+
+    @Test
+    fun `parse should return a request with transfer-encoding chunked split across multiple reads`() {
+        val socketMock = ReadableByteMock.fromStrings(
+            listOf(
+                "POST /path HTTP/1.1\r\n",
+                "Host: localhost\r\n",
+                "Date: Sun Dec 14 19:14:13 JST 2025\r\n",
+                "Transfer-Encoding: chunked\r\n",
+                "\r\n",
+                "5\r",
+                "\nHel",
+                "lo\r\n",
+                "A",
+                "\r\nHello Worl\r",
+                "\n",
+                "1\r",
+                "\nd\r\n",
+                "0\r\n\r",
+                "\n"
+            )
+        )
+
+        val parser = HttpRequestParser()
+        val buffer = ByteBuffer.allocate(1024).flip()
+        val actual = parser.parse(socketMock, buffer)
+
+        val expected = HttpRequest(
+            "POST", "/path", "HTTP/1.1",
+            ImmutableHttpHeaders(
+                mapOf(
+                    "Host" to listOf("localhost"),
+                    "Date" to listOf("Sun Dec 14 19:14:13 JST 2025"),
+                    "Transfer-Encoding" to listOf("chunked")
+                )
+            ),
+            bodyStream = ByteArrayInputStream("HelloHello World".toByteArray(Charsets.US_ASCII))
+        )
+
+        assertRequestEqualsIgnoringBody(expected, actual)
+        assertContentEquals(
+            expected.bodyStream.readAllBytes(),
+            actual.bodyStream.readAllBytes(),
+        )
+    }
+
+    @Test
     fun `parse should throw an exception when header name is invalid`() {
         val socketMock = ReadableByteMock.fromStrings(
             listOf(
@@ -186,6 +271,28 @@ class HttpRequestParserTest {
         val parser = HttpRequestParser()
         val buffer = ByteBuffer.allocate(1024).flip()
         assertThrows<IllegalArgumentException> { parser.parse(socketMock, buffer) }
+    }
+
+    @Test
+    fun `parse should throw an exception when Content-Length and Transfer-Encoding headers are mutually exclusive`() {
+        val socketMock = ReadableByteMock.fromStrings(
+            listOf(
+                "POST /path HTTP/1.1\r\n",
+                "Host: localhost\r\n",
+                "Date: Sun Dec 14 19:14:13 JST 2025\r\n",
+                "Transfer-Encoding: chunked\r\n",
+                "Content-Length: 36\r\n",
+                "\r\n",
+                "5\r\nHello\r\n",
+                "A\r\nHello Worl\r\n",
+                "1\r\nd\r\n",
+                "0\r\n\r\n"
+            )
+        )
+
+        val parser = HttpRequestParser()
+        val buffer = ByteBuffer.allocate(1024).flip()
+        assertThrows<IllegalStateException> { parser.parse(socketMock, buffer) }
     }
 
     fun assertRequestEqualsIgnoringBody(expected: HttpRequest, actual: HttpRequest) {
