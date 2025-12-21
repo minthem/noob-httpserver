@@ -6,24 +6,46 @@ import java.nio.channels.ReadableByteChannel
 internal class SocketReadBuffer(
     private val socket: ReadableByteChannel, private val buffer: ByteBuffer
 ) {
+
+    /**
+     * 読み込むまでブロックする
+     */
     fun readLine(): String {
         while (true) {
-            val lineEnd = findLineEnd()
-            if (lineEnd != -1) {
-                val stringLen = lineEnd - buffer.position() + 1
-                val lineBuffer = ByteArray(stringLen)
-                buffer.get(lineBuffer)
-
-                return lineBuffer.toString(Charsets.US_ASCII).removeSuffix("\r\n")
-            }
-            // ない場合は、未読み取り部分を前詰めしてソケットから取得する
-            buffer.compact()
-            val readN = socket.read(buffer)
-            if (readN == -1) {
-                throw IllegalStateException("Unexpected end of stream")
-            }
-            buffer.flip()
+            val line = tryReadLine() ?: continue
+            return line
         }
+    }
+
+    /**
+     * 読み込めなかったらnullを返す
+     */
+    fun tryReadLine(): String? {
+        val line = getLine()
+        if (line != null) return line
+
+        buffer.compact()
+        val readN = socket.read(buffer)
+        buffer.flip()
+
+        if (readN == -1) {
+            throw IllegalStateException("Unexpected end of stream")
+        }
+
+        return getLine()
+    }
+
+    private fun getLine(): String? {
+        val lineEnd = findLineEnd()
+        if (lineEnd != -1) {
+            val stringLen = lineEnd - buffer.position() + 1
+            val lineBuffer = ByteArray(stringLen)
+            buffer.get(lineBuffer)
+
+            return lineBuffer.toString(Charsets.US_ASCII).removeSuffix("\r\n")
+        }
+
+        return null
     }
 
     fun read(arr: ByteArray, offset: Int = 0, length: Int = arr.size): Int {

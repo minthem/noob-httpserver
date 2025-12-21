@@ -45,12 +45,16 @@ internal class HttpRequestParser {
     }
 
     private fun getInputStreamForRequestBody(socketBuffer: SocketReadBuffer, headers: HttpHeaders): InputStream {
-        val contentLength = headers.getFirst("Content-Length")?.toLongOrNull() ?: 0
+        val contentLength = headers.getFirst("Content-Length")?.toLong()
         val isChunked = headers.getFirst("Transfer-Encoding")?.equals("chunked", ignoreCase = true) ?: false
 
+        if (contentLength != null && isChunked) {
+            throw IllegalStateException("Content-Length and Transfer-Encoding headers are mutually exclusive")
+        }
+
         val source = when {
-            isChunked -> TODO("Chunked body is not supported yet")
-            else -> FixedLengthBodySource(socketBuffer, contentLength)
+            isChunked -> ChunkedBodySource(socketBuffer)
+            else -> FixedLengthBodySource(socketBuffer, contentLength ?: 0)
         }
 
         return BodySourceInputStream(source)
