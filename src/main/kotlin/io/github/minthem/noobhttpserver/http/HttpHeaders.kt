@@ -1,6 +1,6 @@
 package io.github.minthem.noobhttpserver.http
 
-import io.github.minthem.noobhttpserver.http.header.HttpHeaderValidator
+import io.github.minthem.noobhttpserver.http.HttpHeaderValidator
 
 
 sealed class HttpHeaders protected constructor(

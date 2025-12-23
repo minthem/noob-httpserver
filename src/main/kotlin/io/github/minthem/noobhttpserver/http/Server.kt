@@ -1,7 +1,5 @@
-package io.github.minthem.noobhttpserver.http.server
+package io.github.minthem.noobhttpserver.http
 
-import io.github.minthem.noobhttpserver.http.HttpHeaders
-import io.github.minthem.noobhttpserver.http.request.HttpRequestParser
 import java.net.InetSocketAddress
 import java.net.StandardProtocolFamily
 import java.nio.ByteBuffer

@@ -1,6 +1,4 @@
-package io.github.minthem.noobhttpserver.http.request
-
-import io.github.minthem.noobhttpserver.http.socket.SocketReadBuffer
+package io.github.minthem.noobhttpserver.http
 
 internal interface BodySource {
 

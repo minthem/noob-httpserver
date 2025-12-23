@@ -1,9 +1,9 @@
-package io.github.minthem.noobhttpserver.http.header
+package io.github.minthem.noobhttpserver.http
 
 import org.junit.jupiter.api.Nested
 import kotlin.test.Test
-import kotlin.test.assertTrue
 import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class HttpHeaderValidatorTest {
 
