@@ -1,5 +1,6 @@
 package io.github.minthem.noobhttpserver.http
 
+import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.assertThrows
 import java.io.ByteArrayInputStream
 import java.io.InputStream
@@ -26,7 +27,7 @@ class HttpRequestParserTest {
         val actual = parser.parse(socketMock, buffer)
 
         val expected = HttpRequest(
-            "GET", "/path", "HTTP/1.1",
+            HttpMethod.GET, "/path", HttpProtocol.HTTP_1_1,
             ImmutableHttpHeaders(
                 mapOf(
                     "Host" to listOf("localhost"),
@@ -62,7 +63,7 @@ class HttpRequestParserTest {
         val actual = parser.parse(socketMock, buffer)
 
         val expected = HttpRequest(
-            "GET", "/path", "HTTP/1.1",
+            HttpMethod.GET, "/path", HttpProtocol.HTTP_1_1,
             ImmutableHttpHeaders(
                 mapOf(
                     "Host" to listOf("localhost"),
@@ -98,7 +99,7 @@ class HttpRequestParserTest {
         val actual = parser.parse(socketMock, buffer)
 
         val expected = HttpRequest(
-            "POST", "/path", "HTTP/1.1",
+            HttpMethod.POST, "/path", HttpProtocol.HTTP_1_1,
             ImmutableHttpHeaders(
                 mapOf(
                     "Host" to listOf("localhost"),
@@ -136,7 +137,7 @@ class HttpRequestParserTest {
         val actual = parser.parse(socketMock, buffer)
 
         val expected = HttpRequest(
-            "POST", "/path", "HTTP/1.1",
+            HttpMethod.POST, "/path", HttpProtocol.HTTP_1_1,
             ImmutableHttpHeaders(
                 mapOf(
                     "Host" to listOf("localhost"),
@@ -176,7 +177,7 @@ class HttpRequestParserTest {
         val actual = parser.parse(socketMock, buffer)
 
         val expected = HttpRequest(
-            "POST", "/path", "HTTP/1.1",
+            HttpMethod.POST, "/path", HttpProtocol.HTTP_1_1,
             ImmutableHttpHeaders(
                 mapOf(
                     "Host" to listOf("localhost"),
@@ -222,7 +223,7 @@ class HttpRequestParserTest {
         val actual = parser.parse(socketMock, buffer)
 
         val expected = HttpRequest(
-            "POST", "/path", "HTTP/1.1",
+            HttpMethod.POST, "/path", HttpProtocol.HTTP_1_1,
             ImmutableHttpHeaders(
                 mapOf(
                     "Host" to listOf("localhost"),

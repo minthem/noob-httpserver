@@ -17,14 +17,17 @@ internal class HttpRequestParser {
         return HttpRequest(method, path, protocol, headers, stream)
     }
 
-    private fun parseRequestLine(socketBuffer: SocketReadBuffer): Triple<String, String, String> {
+    private fun parseRequestLine(socketBuffer: SocketReadBuffer): Triple<HttpMethod, String, HttpProtocol> {
         val requestLine = socketBuffer.readLine()
         val parts = requestLine.split(" ")
         if (parts.size != 3) {
             throw IllegalArgumentException("Invalid request line: $requestLine")
         }
 
-        return Triple(parts[0], parts[1], parts[2])
+        val method = HttpMethod.fromString(parts[0])
+        val protocol = HttpProtocol.fromString(parts[2])
+
+        return Triple(method, parts[1], protocol)
     }
 
     private fun parseHeaders(socketBuffer: SocketReadBuffer): HttpHeaders {
