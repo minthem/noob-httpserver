@@ -1,9 +1,8 @@
 package io.github.minthem.noobhttpserver.http.request
 
-import io.github.minthem.noobhttpserver.http.header.ImmutableHttpHeaders
+import io.github.minthem.noobhttpserver.http.ImmutableHttpHeaders
 import org.junit.jupiter.api.assertThrows
 import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import java.nio.ByteBuffer
 import kotlin.test.Test

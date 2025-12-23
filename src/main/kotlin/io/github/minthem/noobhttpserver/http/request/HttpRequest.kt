@@ -1,6 +1,6 @@
 package io.github.minthem.noobhttpserver.http.request
 
-import io.github.minthem.noobhttpserver.http.header.HttpHeaders
+import io.github.minthem.noobhttpserver.http.HttpHeaders
 import java.io.InputStream
 
 data class HttpRequest(

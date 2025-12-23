@@ -1,13 +1,13 @@
-package io.github.minthem.noobhttpserver.http.header
+package io.github.minthem.noobhttpserver.http
 
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.assertThrows
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNull
-import kotlin.test.assertTrue
 import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class HttpHeadersTest {
 
