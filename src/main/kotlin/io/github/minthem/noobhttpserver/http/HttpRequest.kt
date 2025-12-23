@@ -1,6 +1,5 @@
-package io.github.minthem.noobhttpserver.http.request
+package io.github.minthem.noobhttpserver.http
 
-import io.github.minthem.noobhttpserver.http.HttpHeaders
 import java.io.InputStream
 
 data class HttpRequest(
@@ -10,4 +9,3 @@ data class HttpRequest(
     val headers: HttpHeaders,
     val bodyStream: InputStream,
 )
-

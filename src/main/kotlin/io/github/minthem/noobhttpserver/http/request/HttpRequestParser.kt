@@ -1,6 +1,7 @@
 package io.github.minthem.noobhttpserver.http.request
 
 import io.github.minthem.noobhttpserver.http.HttpHeaders
+import io.github.minthem.noobhttpserver.http.HttpRequest
 import io.github.minthem.noobhttpserver.http.MutableHttpHeaders
 import io.github.minthem.noobhttpserver.http.socket.SocketReadBuffer
 import java.io.InputStream
