@@ -1,7 +1,5 @@
-package io.github.minthem.noobhttpserver.http.server
+package io.github.minthem.noobhttpserver.http
 
-import io.github.minthem.noobhttpserver.http.header.HttpHeaders
-import io.github.minthem.noobhttpserver.http.request.HttpRequestParser
 import java.net.InetSocketAddress
 import java.net.StandardProtocolFamily
 import java.nio.ByteBuffer
@@ -74,11 +72,10 @@ class Server(
         }
     }
 
-    private fun isKeepAlive(protocol: String, headers: HttpHeaders): Boolean {
+    private fun isKeepAlive(protocol: HttpProtocol, headers: HttpHeaders): Boolean {
         return when (protocol) {
-            "HTTP/1.1" -> !(headers["Connection"]?.contains("close") ?: false)
-            "HTTP/1.0" -> headers["Connection"]?.contains("keep-alive") == true
-            else -> false
+            HttpProtocol.HTTP_1_1 -> !(headers["Connection"]?.contains("close") ?: false)
+            HttpProtocol.HTTP_1_0 -> headers["Connection"]?.contains("keep-alive") == true
         }
     }
 }

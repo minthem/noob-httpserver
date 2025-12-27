@@ -1,9 +1,7 @@
-package io.github.minthem.noobhttpserver.http.request
+package io.github.minthem.noobhttpserver.http
 
-import io.github.minthem.noobhttpserver.http.header.ImmutableHttpHeaders
 import org.junit.jupiter.api.assertThrows
 import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import java.nio.ByteBuffer
 import kotlin.test.Test
@@ -28,7 +26,7 @@ class HttpRequestParserTest {
         val actual = parser.parse(socketMock, buffer)
 
         val expected = HttpRequest(
-            "GET", "/path", "HTTP/1.1",
+            HttpMethod.GET, RequestTarget("/path"), HttpProtocol.HTTP_1_1,
             ImmutableHttpHeaders(
                 mapOf(
                     "Host" to listOf("localhost"),
@@ -64,7 +62,7 @@ class HttpRequestParserTest {
         val actual = parser.parse(socketMock, buffer)
 
         val expected = HttpRequest(
-            "GET", "/path", "HTTP/1.1",
+            HttpMethod.GET, RequestTarget("/path"), HttpProtocol.HTTP_1_1,
             ImmutableHttpHeaders(
                 mapOf(
                     "Host" to listOf("localhost"),
@@ -100,7 +98,7 @@ class HttpRequestParserTest {
         val actual = parser.parse(socketMock, buffer)
 
         val expected = HttpRequest(
-            "POST", "/path", "HTTP/1.1",
+            HttpMethod.POST, RequestTarget("/path"), HttpProtocol.HTTP_1_1,
             ImmutableHttpHeaders(
                 mapOf(
                     "Host" to listOf("localhost"),
@@ -138,7 +136,7 @@ class HttpRequestParserTest {
         val actual = parser.parse(socketMock, buffer)
 
         val expected = HttpRequest(
-            "POST", "/path", "HTTP/1.1",
+            HttpMethod.POST, RequestTarget("/path"), HttpProtocol.HTTP_1_1,
             ImmutableHttpHeaders(
                 mapOf(
                     "Host" to listOf("localhost"),
@@ -178,7 +176,7 @@ class HttpRequestParserTest {
         val actual = parser.parse(socketMock, buffer)
 
         val expected = HttpRequest(
-            "POST", "/path", "HTTP/1.1",
+            HttpMethod.POST, RequestTarget("/path"), HttpProtocol.HTTP_1_1,
             ImmutableHttpHeaders(
                 mapOf(
                     "Host" to listOf("localhost"),
@@ -224,7 +222,7 @@ class HttpRequestParserTest {
         val actual = parser.parse(socketMock, buffer)
 
         val expected = HttpRequest(
-            "POST", "/path", "HTTP/1.1",
+            HttpMethod.POST, RequestTarget("/path"), HttpProtocol.HTTP_1_1,
             ImmutableHttpHeaders(
                 mapOf(
                     "Host" to listOf("localhost"),
@@ -293,6 +291,21 @@ class HttpRequestParserTest {
         val parser = HttpRequestParser()
         val buffer = ByteBuffer.allocate(1024).flip()
         assertThrows<IllegalStateException> { parser.parse(socketMock, buffer) }
+    }
+
+    @Test
+    fun `parse should throw an exception when Request-Target is invalid`() {
+        val socketMock = ReadableByteMock.fromStrings(
+            listOf(
+                "GET /path/with/invalid|char HTTP/1.1\r\n",
+                "Host: localhost\r\n",
+                "Date: Sun Dec 14 19:14:13 JST 2025\r\n",
+                "\r\n"
+            )
+        )
+        val parser = HttpRequestParser()
+        val buffer = ByteBuffer.allocate(1024).flip()
+        assertThrows<IllegalArgumentException> { parser.parse(socketMock, buffer) }
     }
 
     fun assertRequestEqualsIgnoringBody(expected: HttpRequest, actual: HttpRequest) {

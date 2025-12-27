@@ -1,8 +1,5 @@
-package io.github.minthem.noobhttpserver.http.request
+package io.github.minthem.noobhttpserver.http
 
-import io.github.minthem.noobhttpserver.http.header.HttpHeaders
-import io.github.minthem.noobhttpserver.http.header.MutableHttpHeaders
-import io.github.minthem.noobhttpserver.http.socket.SocketReadBuffer
 import java.io.InputStream
 import java.nio.ByteBuffer
 import java.nio.channels.ReadableByteChannel
@@ -14,20 +11,24 @@ internal class HttpRequestParser {
      */
     fun parse(channel: ReadableByteChannel, buffer: ByteBuffer): HttpRequest {
         val socketBuffer = SocketReadBuffer(channel, buffer)
-        val (method, path, protocol) = parseRequestLine(socketBuffer)
+        val (method, requestTarget, protocol) = parseRequestLine(socketBuffer)
         val headers = parseHeaders(socketBuffer)
         val stream = getInputStreamForRequestBody(socketBuffer, headers)
-        return HttpRequest(method, path, protocol, headers, stream)
+        return HttpRequest(method, requestTarget, protocol, headers, stream)
     }
 
-    private fun parseRequestLine(socketBuffer: SocketReadBuffer): Triple<String, String, String> {
+    private fun parseRequestLine(socketBuffer: SocketReadBuffer): Triple<HttpMethod, RequestTarget, HttpProtocol> {
         val requestLine = socketBuffer.readLine()
         val parts = requestLine.split(" ")
         if (parts.size != 3) {
             throw IllegalArgumentException("Invalid request line: $requestLine")
         }
 
-        return Triple(parts[0], parts[1], parts[2])
+        val method = HttpMethod.fromString(parts[0])
+        val requestTarget = RequestTarget(parts[1])
+        val protocol = HttpProtocol.fromString(parts[2])
+
+        return Triple(method, requestTarget, protocol)
     }
 
     private fun parseHeaders(socketBuffer: SocketReadBuffer): HttpHeaders {
