@@ -11,13 +11,13 @@ internal class HttpRequestParser {
      */
     fun parse(channel: ReadableByteChannel, buffer: ByteBuffer): HttpRequest {
         val socketBuffer = SocketReadBuffer(channel, buffer)
-        val (method, path, protocol) = parseRequestLine(socketBuffer)
+        val (method, requestTarget, protocol) = parseRequestLine(socketBuffer)
         val headers = parseHeaders(socketBuffer)
         val stream = getInputStreamForRequestBody(socketBuffer, headers)
-        return HttpRequest(method, path, protocol, headers, stream)
+        return HttpRequest(method, requestTarget, protocol, headers, stream)
     }
 
-    private fun parseRequestLine(socketBuffer: SocketReadBuffer): Triple<HttpMethod, String, HttpProtocol> {
+    private fun parseRequestLine(socketBuffer: SocketReadBuffer): Triple<HttpMethod, RequestTarget, HttpProtocol> {
         val requestLine = socketBuffer.readLine()
         val parts = requestLine.split(" ")
         if (parts.size != 3) {
@@ -25,9 +25,10 @@ internal class HttpRequestParser {
         }
 
         val method = HttpMethod.fromString(parts[0])
+        val requestTarget = RequestTarget(parts[1])
         val protocol = HttpProtocol.fromString(parts[2])
 
-        return Triple(method, parts[1], protocol)
+        return Triple(method, requestTarget, protocol)
     }
 
     private fun parseHeaders(socketBuffer: SocketReadBuffer): HttpHeaders {
