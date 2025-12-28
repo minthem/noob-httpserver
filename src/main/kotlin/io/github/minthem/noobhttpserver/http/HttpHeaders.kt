@@ -54,6 +54,8 @@ class MutableHttpHeaders(initial: Map<String, List<String>> = emptyMap()) : Http
         mutableValues.getOrPut(normalizedKey) { mutableListOf() }.add(value)
     }
 
+    fun add(vararg pairs: Pair<String, String>) = pairs.forEach { (key, value) -> add(key, value) }
+
     fun addAll(key: String, values: List<String>) {
         isValidHeader(key, values)
         val normalizedKey = normalizeKey(key)
