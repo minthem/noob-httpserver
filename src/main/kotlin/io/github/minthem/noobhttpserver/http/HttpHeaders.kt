@@ -1,19 +1,28 @@
 package io.github.minthem.noobhttpserver.http
 
-import io.github.minthem.noobhttpserver.http.HttpHeaderValidator
 
+sealed interface HttpHeaders {
 
-sealed class HttpHeaders protected constructor(
-    initial: Map<String, List<String>> = emptyMap()
-) {
-
-    protected open val values: Map<String, List<String>> = initializeMap(initial)
+    val values: Map<String, List<String>>
 
     fun getFirst(key: String): String? = this[key]?.firstOrNull()
 
     operator fun get(key: String): List<String>? = values[normalizeKey(key)]
 
     operator fun contains(key: String): Boolean = values.containsKey(normalizeKey(key))
+
+    fun forEach(action: (String, List<String>) -> Unit) {
+        values.forEach { (key, values) -> action(key, values.toList()) }
+    }
+
+    fun toImmutable(): ImmutableHttpHeaders
+
+    fun toMutable(): MutableHttpHeaders
+}
+
+class ImmutableHttpHeaders(initial: Map<String, List<String>>) : HttpHeaders {
+
+    override val values: Map<String, List<String>> = initializeMap(initial)
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -26,11 +35,13 @@ sealed class HttpHeaders protected constructor(
     }
 
     override fun toString(): String = values.toString()
+
+    override fun toImmutable(): ImmutableHttpHeaders = this
+
+    override fun toMutable(): MutableHttpHeaders = MutableHttpHeaders(values)
 }
 
-class ImmutableHttpHeaders(initial: Map<String, List<String>>) : HttpHeaders(initial)
-
-class MutableHttpHeaders(initial: Map<String, List<String>> = emptyMap()) : HttpHeaders(initial) {
+class MutableHttpHeaders(initial: Map<String, List<String>> = emptyMap()) : HttpHeaders {
 
     private val mutableValues = initializeMap(initial)
 
@@ -43,6 +54,12 @@ class MutableHttpHeaders(initial: Map<String, List<String>> = emptyMap()) : Http
         mutableValues.getOrPut(normalizedKey) { mutableListOf() }.add(value)
     }
 
+    fun addAll(key: String, values: List<String>) {
+        isValidHeader(key, values)
+        val normalizedKey = normalizeKey(key)
+        mutableValues.getOrPut(normalizedKey) { mutableListOf() }.addAll(values)
+    }
+
     fun set(key: String, value: String) {
         isValidHeader(key, value)
         val normalizedKey = normalizeKey(key)
@@ -53,6 +70,22 @@ class MutableHttpHeaders(initial: Map<String, List<String>> = emptyMap()) : Http
         val normalizedKey = normalizeKey(key)
         mutableValues.remove(normalizedKey)
     }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is HttpHeaders) return false
+        return values == other.values
+    }
+
+    override fun hashCode(): Int {
+        return values.hashCode()
+    }
+
+    override fun toString(): String = values.toString()
+
+    override fun toImmutable(): ImmutableHttpHeaders = ImmutableHttpHeaders(values)
+
+    override fun toMutable(): MutableHttpHeaders = this
 }
 
 private fun isValidHeader(name: String, value: String) {

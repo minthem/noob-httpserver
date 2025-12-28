@@ -109,7 +109,8 @@ class HttpHeadersTest {
     fun `headers should be case-insensitive`() {
         val headers = MutableHttpHeaders(mapOf("Cache-Control" to listOf("no-cache")))
         assertTrue("cache-control" in headers, "ヘッダー名の存在判定は大文字小文字を区別しないことを期待")
-        assertEquals(listOf("no-cache"), headers["CACHE-CONTROL"], "取得も大文字小文字を区別しないことを期待")
+        assertEquals(listOf("no-cache"), headers["CACHE-CONTROL"], "取得も大文字小文字を区別しないことを期待(get)")
+        assertEquals(listOf("no-cache")[0], headers.getFirst("CACHE-CONTROL"), "取得も大文字小文字を区別しないことを期待(getFirst)")
     }
 
     @Test
@@ -134,6 +135,54 @@ class HttpHeadersTest {
         val headers1 = ImmutableHttpHeaders(mapOf("Cache-Control" to listOf("no-cache")))
         val headers2 = ImmutableHttpHeaders(mapOf("Content-Type" to listOf("application/json")))
         assertNotEquals(headers1, headers2, "内容が異なるヘッダーはequalsで等しくないことを期待")
+    }
+
+    @Test
+    fun `forEach should iterate over all headers`() {
+        val headers = ImmutableHttpHeaders(
+            mapOf(
+                "Content-Type" to listOf("application/json"),
+                "Accept" to listOf("text/html", "text/plain"),
+                "Authorization" to listOf("Bearer token")
+            )
+        )
+        val headers2 = MutableHttpHeaders()
+        headers.forEach { key, values -> headers2.addAll(key, values) }
+
+        assertEquals(
+            headers as HttpHeaders,
+            headers2 as HttpHeaders,
+            "forEachは全ヘッダーを順に処理することを期待"
+        )
+    }
+
+    @Test
+    fun `forEach should work on empty headers`() {
+        val headers = ImmutableHttpHeaders(emptyMap())
+        val headerList = mutableListOf<Pair<String, List<String>>>()
+        headers.forEach { key, values -> headerList.add(key to values) }
+
+        assertTrue(headerList.isEmpty(), "ヘッダーが空の場合はforEachは何も処理しないことを期待")
+    }
+
+    @Test
+    fun `immutable headers should be immutable`() {
+        val mutHeaders = MutableHttpHeaders(mapOf("Content-Type" to listOf("application/json")))
+
+        val header = mutHeaders.toImmutable()
+        assertEquals(mutHeaders as HttpHeaders, header, "mutableとimmutableのヘッダーが等価であることを期待")
+    }
+
+    @Test
+    fun `toMutableHeaders should return a mutable copy`() {
+        val immutHeaders = ImmutableHttpHeaders(mapOf("Content-Type" to listOf("application/json")))
+        val mutHeaders = immutHeaders.toMutable()
+
+        assertEquals(immutHeaders as HttpHeaders, mutHeaders as HttpHeaders, "変換前後で内容が等価であることを期待")
+
+        // 変更しても元の ImmutableHttpHeaders に影響がないこと
+        mutHeaders.add("X-New-Header", "value")
+        assertFalse("X-New-Header" in immutHeaders)
     }
 
     @Nested
