@@ -249,30 +249,6 @@ class HttpHeadersTest {
         }
 
         @Test
-        fun `addAll should handle an empty list of values and not modify existing headers`() {
-            val headers = MutableHttpHeaders(mapOf("Content-Type" to listOf("application/json")))
-            headers.addAll("Content-Type", emptyList())
-
-            assertEquals(
-                listOf("application/json"),
-                headers["Content-Type"],
-                "addAll with an empty list must not modify the existing header"
-            )
-        }
-
-        @Test
-        fun `addAll with empty list for non-existent header should create an empty header`() {
-            val headers = MutableHttpHeaders()
-            headers.addAll("Accept", emptyList())
-
-            assertEquals(
-                emptyList(),
-                headers["Accept"],
-                "addAll with an empty list must create a new, empty header"
-            )
-        }
-
-        @Test
         fun `addAll should throw exception for invalid header name`() {
             val headers = MutableHttpHeaders()
             assertThrows<IllegalArgumentException> {
@@ -313,17 +289,6 @@ class HttpHeadersTest {
                 "addAll must handle mixed-case header names and normalize correctly"
             )
         }
-
-        @Test
-        fun `addAll should do nothing if adding an empty list to an empty MutableHttpHeaders`() {
-            val headers = MutableHttpHeaders()
-            headers.addAll("Non-Existent-Header", emptyList())
-
-            assertFalse(
-                headers.contains("Non-Existent-Header"),
-                "addAll should not create a header for an empty list"
-            )
-        }
     }
 
     @Nested
@@ -358,6 +323,19 @@ class HttpHeadersTest {
         @Test
         fun `invalid header value set`() {
             assertThrows<IllegalArgumentException> { MutableHttpHeaders().set("Content-Type", "Invalid Value\n") }
+        }
+
+        @Test
+        fun `addAll should throw exception for empty list`() {
+            val headers = MutableHttpHeaders()
+            assertThrows<IllegalArgumentException> { headers.addAll("Non-Existent-Header", emptyList()) }
+        }
+
+        @Test
+        fun `addAll should throw exception for empty list existing header`() {
+            val headers = MutableHttpHeaders(mapOf("Content-Type" to listOf("application/json")))
+            assertThrows<IllegalArgumentException> { headers.addAll("Content-Type", emptyList()) }
+
         }
     }
 }

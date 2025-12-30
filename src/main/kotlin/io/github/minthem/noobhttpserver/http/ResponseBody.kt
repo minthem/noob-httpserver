@@ -15,7 +15,7 @@ internal interface ResponseBody {
 
     fun defaultContentType(): String?
 
-    fun contentLength(): Long?
+    fun contentLength(): Long
 }
 
 internal class EmptyResponseBody : ResponseBody {
@@ -24,7 +24,7 @@ internal class EmptyResponseBody : ResponseBody {
     }
 
     override fun defaultContentType(): String? = null
-    override fun contentLength(): Long? = null
+    override fun contentLength(): Long = 0
 }
 
 internal class TextResponseBody(
