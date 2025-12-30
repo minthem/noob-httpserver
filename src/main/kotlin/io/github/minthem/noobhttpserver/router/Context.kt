@@ -2,8 +2,8 @@ package io.github.minthem.noobhttpserver.router
 
 import io.github.minthem.noobhttpserver.http.HttpRequest
 
-class Context(
-    val req: HttpRequest
+class Context internal constructor(
+    private val req: HttpRequest
 ) {
 
     // TODO add queryParams, pathParams (decode済み)

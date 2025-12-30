@@ -308,7 +308,7 @@ class HttpRequestParserTest {
         assertThrows<IllegalArgumentException> { parser.parse(socketMock, buffer) }
     }
 
-    fun assertRequestEqualsIgnoringBody(expected: HttpRequest, actual: HttpRequest) {
+    private fun assertRequestEqualsIgnoringBody(expected: HttpRequest, actual: HttpRequest) {
         assertEquals(expected.method, actual.method, "HTTPメソッドが一致することを期待")
         assertEquals(expected.path, actual.path, "パスが一致することを期待")
         assertEquals(expected.protocol, actual.protocol, "プロトコル(HTTPバージョン)が一致することを期待")
