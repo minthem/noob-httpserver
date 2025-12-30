@@ -56,6 +56,10 @@ internal data class PathPattern(
             lastIndex = reg.end()
         }
 
+        if(lastIndex < pattern.length) {
+            sb.append(Pattern.quote(pattern.substring(lastIndex)))
+        }
+
         sb.append("/?$")
 
         return Regex(sb.toString()) to paramNames

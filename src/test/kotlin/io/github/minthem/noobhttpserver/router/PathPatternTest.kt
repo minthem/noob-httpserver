@@ -10,6 +10,12 @@ import kotlin.test.assertTrue
 class PathPatternTest {
 
     @Test
+    fun `testMatch should return true when nothing path parameters`() {
+        val pattern = PathPattern("/users")
+        assertTrue(pattern.match(RequestTarget("/users")) is PathPatternMatchResult.Match)
+    }
+
+    @Test
     fun `testMatch should return true when path matches pattern`() {
         val pattern = PathPattern("/users/{id}")
 
@@ -42,6 +48,12 @@ class PathPatternTest {
                 fail { "Expected match for /users/test-user" }
             }
         }
+    }
+
+    @Test
+    fun `testMatch should return true when path parameters in middle`() {
+        val pattern = PathPattern("/users/{id}/orders")
+        assertTrue(pattern.match(RequestTarget("/users/foo42/orders")) is PathPatternMatchResult.Match)
     }
 
     @Test
