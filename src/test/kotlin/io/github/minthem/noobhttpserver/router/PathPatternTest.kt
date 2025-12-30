@@ -11,13 +11,13 @@ class PathPatternTest {
 
     @Test
     fun `testMatch should return true when nothing path parameters`() {
-        val pattern = PathPattern("/users")
+        val pattern = PathPattern.parse("/users")
         assertTrue(pattern.match(RequestTarget("/users")) is PathPatternMatchResult.Match)
     }
 
     @Test
     fun `testMatch should return true when path matches pattern`() {
-        val pattern = PathPattern("/users/{id}")
+        val pattern = PathPattern.parse("/users/{id}")
 
         when (val result = pattern.match(RequestTarget("/users/42"))) {
             is PathPatternMatchResult.Match -> {
@@ -52,13 +52,13 @@ class PathPatternTest {
 
     @Test
     fun `testMatch should return true when path parameters in middle`() {
-        val pattern = PathPattern("/users/{id}/orders")
+        val pattern = PathPattern.parse("/users/{id}/orders")
         assertTrue(pattern.match(RequestTarget("/users/foo42/orders")) is PathPatternMatchResult.Match)
     }
 
     @Test
     fun `testMatch should return true when path matches pattern multiple times`() {
-        val pattern = PathPattern("/users/{id}/orders/{orderId}")
+        val pattern = PathPattern.parse("/users/{id}/orders/{orderId}")
 
         when (val result = pattern.match(RequestTarget("/users/42/orders/1234567890"))) {
             is PathPatternMatchResult.Match -> {
@@ -83,7 +83,7 @@ class PathPatternTest {
 
     @Test
     fun `testNoMatch should return false when path does not match pattern`() {
-        val pattern = PathPattern("/users/{id}")
+        val pattern = PathPattern.parse("/users/{id}")
         assertTrue(pattern.match(RequestTarget("/users/")) is PathPatternMatchResult.NoMatch)
         assertTrue(pattern.match(RequestTarget("/users")) is PathPatternMatchResult.NoMatch)
         assertTrue(pattern.match(RequestTarget("/orders/42")) is PathPatternMatchResult.NoMatch)
@@ -92,11 +92,11 @@ class PathPatternTest {
     @Test
     fun `testInvalidPathPattern should throw exception for invalid patterns`() {
         assertFailsWith<IllegalArgumentException>("Non slash start") {
-            PathPattern("non-slash-start")
+            PathPattern.parse("non-slash-start")
         }
-        assertFailsWith<IllegalArgumentException>("ブラケットそのまま") { PathPattern("/users/{id}/}") }
-        assertFailsWith<IllegalArgumentException>("不正なパス") { PathPattern("/users/?????}") }
-        assertFailsWith<IllegalArgumentException>("変数名に使用できない文字列") { PathPattern("/users/{+++++++}}") }
-        assertFailsWith<IllegalArgumentException>("セグメント内に複数の変数") { PathPattern("/users/{id}{name}") }
+        assertFailsWith<IllegalArgumentException>("ブラケットそのまま") { PathPattern.parse("/users/{id}/}") }
+        assertFailsWith<IllegalArgumentException>("不正なパス") { PathPattern.parse("/users/?????}") }
+        assertFailsWith<IllegalArgumentException>("変数名に使用できない文字列") { PathPattern.parse("/users/{+++++++}}") }
+        assertFailsWith<IllegalArgumentException>("セグメント内に複数の変数") { PathPattern.parse("/users/{id}{name}") }
     }
 }

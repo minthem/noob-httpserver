@@ -27,7 +27,7 @@ class Router(init: Router.() -> Unit) {
     fun head(pattern: String, handler: Handler) = addRoute(HttpMethod.HEAD, pattern, handler)
 
     private fun addRoute(method: HttpMethod, pattern: String, handler: Handler) {
-        routes.add(Route(method, PathPattern(pattern), handler))
+        routes.add(Route(method, PathPattern.parse(pattern), handler))
     }
 
     internal fun match(request: HttpRequest): Handler? {
