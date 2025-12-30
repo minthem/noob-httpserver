@@ -9,7 +9,7 @@ data class RequestTarget internal constructor(private val value: String) {
 
     private val pathQuery = value.split('?', limit = 2).let { it.first() to it.getOrNull(1) }
 
-    val rawPath = pathQuery.first
+    val rawPath = pathQuery.first.ifEmpty { "/" }
 
     val rawQuery = pathQuery.second
 }
