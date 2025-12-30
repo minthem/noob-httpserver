@@ -110,6 +110,8 @@ private fun isValidHeader(name: String, values: List<String>) {
         throw IllegalArgumentException("Invalid header name: $name")
     }
 
+    if (values.isEmpty()) throw IllegalArgumentException("Header values cannot be empty")
+
     values.forEach { value ->
         if (!HttpHeaderValidator.isValidHeaderValue(value)) throw IllegalArgumentException(
             "Invalid header value: $value"
