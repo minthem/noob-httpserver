@@ -2,10 +2,10 @@ package io.github.minthem.noobhttpserver.http
 
 import java.io.InputStream
 
-data class HttpRequest(
-    val method: HttpMethod,
-    val path: RequestTarget,
-    val protocol: HttpProtocol,
-    val headers: HttpHeaders,
-    val bodyStream: InputStream,
+internal class HttpRequest(
+    internal val method: HttpMethod,
+    internal val path: RequestTarget,
+    internal val protocol: HttpProtocol,
+    internal val headers: HttpHeaders,
+    internal val bodyStream: InputStream,
 )

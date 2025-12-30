@@ -1,9 +1,9 @@
-package io.github.minthem.noobhttpserver.http
+package io.github.minthem.noobhttpserver.io
 
 import java.nio.ByteBuffer
 import java.nio.channels.ReadableByteChannel
 
-internal class SocketReadBuffer(
+internal class ByteChannelReader(
     private val socket: ReadableByteChannel, private val buffer: ByteBuffer
 ) {
 

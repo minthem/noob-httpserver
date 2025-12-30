@@ -1,5 +1,6 @@
 package io.github.minthem.noobhttpserver.http
 
+import io.github.minthem.noobhttpserver.io.ByteChannelReader
 import java.io.InputStream
 import java.nio.ByteBuffer
 import java.nio.channels.ReadableByteChannel
@@ -10,14 +11,14 @@ internal class HttpRequestParser {
      * バッファはreader modeで渡すこと
      */
     fun parse(channel: ReadableByteChannel, buffer: ByteBuffer): HttpRequest {
-        val socketBuffer = SocketReadBuffer(channel, buffer)
+        val socketBuffer = ByteChannelReader(channel, buffer)
         val (method, requestTarget, protocol) = parseRequestLine(socketBuffer)
         val headers = parseHeaders(socketBuffer)
         val stream = getInputStreamForRequestBody(socketBuffer, headers)
         return HttpRequest(method, requestTarget, protocol, headers, stream)
     }
 
-    private fun parseRequestLine(socketBuffer: SocketReadBuffer): Triple<HttpMethod, RequestTarget, HttpProtocol> {
+    private fun parseRequestLine(socketBuffer: ByteChannelReader): Triple<HttpMethod, RequestTarget, HttpProtocol> {
         val requestLine = socketBuffer.readLine()
         val parts = requestLine.split(" ")
         if (parts.size != 3) {
@@ -31,7 +32,7 @@ internal class HttpRequestParser {
         return Triple(method, requestTarget, protocol)
     }
 
-    private fun parseHeaders(socketBuffer: SocketReadBuffer): HttpHeaders {
+    private fun parseHeaders(socketBuffer: ByteChannelReader): HttpHeaders {
         val headers = MutableHttpHeaders()
         while (true) {
             val line = socketBuffer.readLine()
@@ -45,7 +46,7 @@ internal class HttpRequestParser {
         return headers
     }
 
-    private fun getInputStreamForRequestBody(socketBuffer: SocketReadBuffer, headers: HttpHeaders): InputStream {
+    private fun getInputStreamForRequestBody(socketBuffer: ByteChannelReader, headers: HttpHeaders): InputStream {
         val contentLength = headers.getFirst("Content-Length")?.toLong()
         val isChunked = headers.getFirst("Transfer-Encoding")?.equals("chunked", ignoreCase = true) ?: false
 

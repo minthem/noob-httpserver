@@ -1,5 +1,7 @@
 package io.github.minthem.noobhttpserver.http
 
+import io.github.minthem.noobhttpserver.io.ByteChannelReader
+
 internal interface BodySource {
 
     fun read(b: ByteArray, off: Int = 0, len: Int = b.size): Int
@@ -7,7 +9,7 @@ internal interface BodySource {
 
 
 internal class FixedLengthBodySource(
-    private val sockerBuffer: SocketReadBuffer,
+    private val sockerBuffer: ByteChannelReader,
     private val length: Long
 ) : BodySource {
 
@@ -41,7 +43,7 @@ internal class FixedLengthBodySource(
 }
 
 internal class ChunkedBodySource(
-    private val sockerBuffer: SocketReadBuffer
+    private val sockerBuffer: ByteChannelReader
 ) : BodySource {
 
     private enum class State {

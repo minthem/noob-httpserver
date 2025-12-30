@@ -7,6 +7,8 @@ enum class HttpMethod(private val value: String) {
     DELETE("DELETE"),
     HEAD("HEAD");
 
+    fun value() = value
+
     companion object {
         fun fromString(value: String) =
             entries.firstOrNull { it.value == value } ?: throw IllegalArgumentException("Invalid method: $value")
