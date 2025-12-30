@@ -320,7 +320,7 @@ class HttpHeadersTest {
             headers.addAll("Non-Existent-Header", emptyList())
 
             assertFalse(
-                headers.values.containsKey("Non-Existent-Header"),
+                headers.contains("Non-Existent-Header"),
                 "addAll should not create a header for an empty list"
             )
         }

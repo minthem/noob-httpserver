@@ -1,9 +1,9 @@
 package io.github.minthem.noobhttpserver.http
 
 
-sealed interface HttpHeaders {
+sealed class HttpHeaders {
 
-    val values: Map<String, List<String>>
+    protected abstract val values: Map<String, List<String>>
 
     fun getFirst(key: String): String? = this[key]?.firstOrNull()
 
@@ -15,14 +15,9 @@ sealed interface HttpHeaders {
         values.forEach { (key, values) -> action(key, values.toList()) }
     }
 
-    fun toImmutable(): ImmutableHttpHeaders
+    abstract fun toImmutable(): ImmutableHttpHeaders
 
-    fun toMutable(): MutableHttpHeaders
-}
-
-class ImmutableHttpHeaders(initial: Map<String, List<String>>) : HttpHeaders {
-
-    override val values: Map<String, List<String>> = initializeMap(initial)
+    abstract fun toMutable(): MutableHttpHeaders
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -36,12 +31,22 @@ class ImmutableHttpHeaders(initial: Map<String, List<String>>) : HttpHeaders {
 
     override fun toString(): String = values.toString()
 
+    companion object {
+        @JvmField
+        val EMPTY: HttpHeaders = ImmutableHttpHeaders(emptyMap())
+    }
+}
+
+class ImmutableHttpHeaders(initial: Map<String, List<String>>) : HttpHeaders() {
+
+    override val values: Map<String, List<String>> = initializeMap(initial)
+
     override fun toImmutable(): ImmutableHttpHeaders = this
 
     override fun toMutable(): MutableHttpHeaders = MutableHttpHeaders(values)
 }
 
-class MutableHttpHeaders(initial: Map<String, List<String>> = emptyMap()) : HttpHeaders {
+class MutableHttpHeaders(initial: Map<String, List<String>> = emptyMap()) : HttpHeaders() {
 
     private val mutableValues = initializeMap(initial)
 
@@ -72,18 +77,6 @@ class MutableHttpHeaders(initial: Map<String, List<String>> = emptyMap()) : Http
         val normalizedKey = normalizeKey(key)
         mutableValues.remove(normalizedKey)
     }
-
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (other !is HttpHeaders) return false
-        return values == other.values
-    }
-
-    override fun hashCode(): Int {
-        return values.hashCode()
-    }
-
-    override fun toString(): String = values.toString()
 
     override fun toImmutable(): ImmutableHttpHeaders = ImmutableHttpHeaders(values)
 
