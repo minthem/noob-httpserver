@@ -1,6 +1,7 @@
 package io.github.minthem.noobhttpserver.router
 
 import io.github.minthem.noobhttpserver.http.OriginFormValidator
+import io.github.minthem.noobhttpserver.http.RequestTarget
 import java.util.regex.Pattern
 
 
@@ -23,8 +24,8 @@ internal data class PathPattern(
         paramNames = params
     }
 
-    fun match(path: String): PathPatternMatchResult {
-        val m = patternRegex.matchEntire(path) ?: return PathPatternMatchResult.NoMatch
+    fun match(target: RequestTarget): PathPatternMatchResult {
+        val m = patternRegex.matchEntire(target.rawPath) ?: return PathPatternMatchResult.NoMatch
 
         val params = mutableMapOf<String, String>()
         for (paramName in paramNames) {
