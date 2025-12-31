@@ -9,8 +9,7 @@ import io.github.minthem.noobhttpserver.http.HttpStatus
 import io.github.minthem.noobhttpserver.http.MutableHttpHeaders
 import io.github.minthem.noobhttpserver.http.RequestTarget
 import org.junit.jupiter.api.Test
-import kotlin.test.assertNotNull
-import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /**
  * Unit tests for the Router class, which handles mapping HTTP requests to specific handlers
@@ -33,10 +32,10 @@ class RouterTest {
         )
 
         // Act
-        val handler = router.match(request)
+        val result = router.match(request)
 
         // Assert
-        assertNotNull(handler, "A handler should be returned for a matching request.")
+        assertTrue(result is RouteMatchResult.Match, "A handler should be returned for a matching request.")
     }
 
     @Test
@@ -54,10 +53,13 @@ class RouterTest {
         )
 
         // Act
-        val handler = router.match(request)
+        val result = router.match(request)
 
         // Assert
-        assertNull(handler, "No handler should be returned for a request with an unsupported method.")
+        assertTrue(
+            result is RouteMatchResult.MethodNotAllowed,
+            "No handler should be returned for a request with an unsupported method."
+        )
     }
 
     @Test
@@ -75,10 +77,10 @@ class RouterTest {
         )
 
         // Act
-        val handler = router.match(request)
+        val result = router.match(request)
 
         // Assert
-        assertNotNull(handler, "A handler should be returned for a matching request.")
+        assertTrue(result is RouteMatchResult.Match, "A handler should be returned for a matching request.")
     }
 
     @Test
@@ -86,7 +88,7 @@ class RouterTest {
         // Arrange
         val router = Router {
             get("/users/{id}") { _ -> HttpResponse.build {} }
-            post("/users") { _ -> HttpResponse.build { status = HttpStatus.CREATED} }
+            post("/users") { _ -> HttpResponse.build { status = HttpStatus.CREATED } }
         }
         val getRequest = HttpRequest(
             method = HttpMethod.GET,
@@ -104,12 +106,12 @@ class RouterTest {
         )
 
         // Act
-        val getHandler = router.match(getRequest)
-        val postHandler = router.match(postRequest)
+        val getMatch = router.match(getRequest)
+        val postMatch = router.match(postRequest)
 
         // Assert
-        assertNotNull(getHandler, "A handler should be returned for a matching GET request.")
-        assertNotNull(postHandler, "A handler should be returned for a matching POST request.")
+        assertTrue(getMatch is RouteMatchResult.Match, "A handler should be returned for a matching GET request.")
+        assertTrue(postMatch is RouteMatchResult.Match, "A handler should be returned for a matching POST request.")
     }
 
     @Test
@@ -127,10 +129,10 @@ class RouterTest {
         )
 
         // Act
-        val handler = router.match(request)
+        val result = router.match(request)
 
         // Assert
-        assertNotNull(handler, "A handler should be returned for a matching request.")
+        assertTrue(result is RouteMatchResult.Match, "A handler should be returned for a matching request.")
     }
 
     @Test
@@ -148,9 +150,12 @@ class RouterTest {
         )
 
         // Act
-        val handler = router.match(request)
+        val result = router.match(request)
 
         // Assert
-        assertNull(handler, "No handler should be returned for a request with an unmatched static path.")
+        assertTrue(
+            result is RouteMatchResult.NotFound,
+            "No handler should be returned for a request with an unmatched static path."
+        )
     }
 }

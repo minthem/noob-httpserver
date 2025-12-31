@@ -6,6 +6,12 @@ import io.github.minthem.noobhttpserver.http.HttpResponse
 
 typealias Handler = (Context) -> HttpResponse
 
+internal sealed interface RouteMatchResult {
+    class Match(val handler: Handler) : RouteMatchResult
+    class MethodNotAllowed(val allowedMethods: Set<HttpMethod>) : RouteMatchResult
+    object NotFound : RouteMatchResult
+}
+
 class Router(init: Router.() -> Unit) {
 
     private val routes = mutableListOf<Route>()
@@ -30,9 +36,17 @@ class Router(init: Router.() -> Unit) {
         routes.add(Route(method, PathPattern.parse(pattern), handler))
     }
 
-    internal fun match(request: HttpRequest): Handler? {
-        return routes.find {
-            it.method == request.method && it.pattern.match(request.path) is PathPatternMatchResult.Match
-        }?.handler
+    internal fun match(request: HttpRequest): RouteMatchResult {
+        val matchPattern = routes.filter { it.pattern.match(request.path) is PathPatternMatchResult.Match }
+        if (matchPattern.isEmpty()) {
+            return RouteMatchResult.NotFound
+        }
+
+        val matchResult = matchPattern.find { it.method == request.method }
+        return if(matchResult != null) {
+            RouteMatchResult.Match(matchResult.handler)
+        } else {
+            RouteMatchResult.MethodNotAllowed(matchPattern.map { it.method }.toSet())
+        }
     }
 }

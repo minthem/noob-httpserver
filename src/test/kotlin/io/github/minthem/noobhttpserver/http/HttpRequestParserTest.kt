@@ -1,5 +1,6 @@
 package io.github.minthem.noobhttpserver.http
 
+import io.github.minthem.noobhttpserver.exception.HttpResponseException
 import org.junit.jupiter.api.assertThrows
 import java.io.ByteArrayInputStream
 import java.io.InputStream
@@ -290,7 +291,7 @@ class HttpRequestParserTest {
 
         val parser = HttpRequestParser()
         val buffer = ByteBuffer.allocate(1024).flip()
-        assertThrows<IllegalStateException> { parser.parse(socketMock, buffer) }
+        assertThrows<HttpResponseException> { parser.parse(socketMock, buffer) }
     }
 
     @Test
@@ -305,7 +306,7 @@ class HttpRequestParserTest {
         )
         val parser = HttpRequestParser()
         val buffer = ByteBuffer.allocate(1024).flip()
-        assertThrows<IllegalArgumentException> { parser.parse(socketMock, buffer) }
+        assertThrows<HttpResponseException> { parser.parse(socketMock, buffer) }
     }
 
     private fun assertRequestEqualsIgnoringBody(expected: HttpRequest, actual: HttpRequest) {
