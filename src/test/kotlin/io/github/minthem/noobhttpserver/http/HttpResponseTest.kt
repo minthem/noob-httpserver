@@ -1,10 +1,14 @@
 package io.github.minthem.noobhttpserver.http
 
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import java.io.ByteArrayOutputStream
+import java.io.FileNotFoundException
+import java.io.IOException
 import java.nio.channels.Channels
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
+import java.nio.file.Path
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -22,26 +26,27 @@ class HttpResponseTest {
     @Test
     fun `should create HttpResponse with default values`() {
         // Act
-        val response = HttpResponse()
+        val response = HttpResponse.build { }
 
         // Assert
         assertEquals(HttpStatus.OK, response.status)
         assertTrue(response.headers is MutableHttpHeaders)
-        assertTrue(response.body is EmptyResponseBody)
+        assertTrue(response.body is EmptyBodyExecutor)
     }
 
     @Test
     fun `should allow setting body from text`() {
         // Arrange
-        val response = HttpResponse()
         val content = "Hello, World!"
         val charset = StandardCharsets.UTF_8
 
         // Act
-        response.bodyFromText(content, charset)
+        val response = HttpResponse.ok {
+            body(content, charset)
+        }
 
         // Assert
-        assertTrue(response.body is TextResponseBody)
+        assertTrue(response.body is TextBodyExecutor)
         val bStream = ByteArrayOutputStream()
         response.body.writeTo(Channels.newChannel(bStream))
 
@@ -53,14 +58,15 @@ class HttpResponseTest {
     @Test
     fun `should allow setting body from bytes`() {
         // Arrange
-        val response = HttpResponse()
         val content = "Hello, World!".toByteArray(StandardCharsets.UTF_8)
 
         // Act
-        response.bodyFromBytes(content)
+        val response = HttpResponse.ok {
+            body(content)
+        }
 
         // Assert
-        assertTrue(response.body is BinaryResponseBody)
+        assertTrue(response.body is BinaryBodyExecutor)
         val bStream = ByteArrayOutputStream()
         response.body.writeTo(Channels.newChannel(bStream))
 
@@ -73,23 +79,83 @@ class HttpResponseTest {
     @Test
     fun `should allow setting body from file`() {
         // Arrange
-        val response = HttpResponse()
         val content = "File Content"
         val tempFile = Files.createTempFile("test", ".txt").apply {
             toFile().writeText(content)
         }
 
         // Act
-        response.bodyFromFile(tempFile)
+        val response = HttpResponse.ok {
+            body(tempFile)
+        }
 
         // Assert
-        assertTrue(response.body is FileResponseBody)
+        assertTrue(response.body is FileBodyExecutor)
         val bStream = ByteArrayOutputStream()
         response.body.writeTo(Channels.newChannel(bStream))
 
         val actual = String(bStream.toByteArray())
         assertEquals(content, actual)
         assertEquals("text/plain; charset=UTF-8", response.body.defaultContentType())
+
+        // Cleanup
+        Files.deleteIfExists(tempFile)
+    }
+
+    @Test
+    fun `should allow setting body from html file`() {
+        // Arrange
+        val content = "<html><body><h1>Hello World</h1></body></html>"
+        val tempFile = Files.createTempFile("test", ".html").apply {
+            toFile().writeText(content)
+        }
+
+        // Act
+        val response = HttpResponse.ok {
+            body(tempFile)
+        }
+
+        // Assert
+        assertTrue(response.body is FileBodyExecutor)
+        val bStream = ByteArrayOutputStream()
+        response.body.writeTo(Channels.newChannel(bStream))
+
+        val actual = String(bStream.toByteArray())
+        assertEquals(content, actual)
+        assertEquals("text/html; charset=UTF-8", response.body.defaultContentType())
+
+        // Cleanup
+        Files.deleteIfExists(tempFile)
+    }
+
+    @Test
+    fun `should throw build response from file not found`() {
+        // Arrange
+        val nonExist = Path.of("non-existent-file.txt")
+
+        // Act
+        assertThrows<FileNotFoundException> {
+            HttpResponse.ok {
+                body(nonExist)
+            }
+        }
+    }
+
+    @Test
+    fun `should throw build response from file does not readable`() {
+        // Arrange
+        val content = "File Content"
+        val tempFile = Files.createTempFile("test", ".txt").apply {
+            toFile().writeText(content)
+            toFile().setReadable(false)
+        }
+
+        // Act
+        assertThrows<IOException> {
+            HttpResponse.ok {
+                body(tempFile)
+            }
+        }
 
         // Cleanup
         Files.deleteIfExists(tempFile)

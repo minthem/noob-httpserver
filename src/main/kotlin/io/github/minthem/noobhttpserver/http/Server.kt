@@ -49,14 +49,9 @@ class Server(
                                             val response = handler?.let {
                                                 val context = Context(request)
                                                 it(context)
-                                            } ?: HttpResponse(
-                                                HttpStatus.NOT_FOUND, ImmutableHttpHeaders(
-                                                    mapOf(
-                                                        "content-length" to listOf("0"),
-                                                        "connection" to listOf("close"),
-                                                    )
-                                                )
-                                            )
+                                            } ?: HttpResponse.notFound {
+                                                header("connection", "close")
+                                            }
 
                                             isKeepAlive = isKeepAlive(
                                                 request.protocol,
