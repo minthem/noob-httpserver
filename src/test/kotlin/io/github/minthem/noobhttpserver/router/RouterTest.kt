@@ -22,7 +22,7 @@ class RouterTest {
     fun `match should return correct handler for a matching GET request`() {
         // Arrange
         val router = Router {
-            get("/users/{id}") { _ -> HttpResponse.ok {} }
+            get("/users/{id}") { _ -> HttpResponse.build {} }
         }
         val request = HttpRequest(
             method = HttpMethod.GET,
@@ -43,7 +43,7 @@ class RouterTest {
     fun `match should return null when no route matches`() {
         // Arrange
         val router = Router {
-            post("/users/{id}") { _ -> HttpResponse.ok {} }
+            post("/users/{id}") { _ -> HttpResponse.build {} }
         }
         val request = HttpRequest(
             method = HttpMethod.GET,
@@ -64,7 +64,7 @@ class RouterTest {
     fun `match should handle paths with trailing slashes correctly`() {
         // Arrange
         val router = Router {
-            get("/users/{id}") { _ -> HttpResponse.ok {} }
+            get("/users/{id}") { _ -> HttpResponse.build {} }
         }
         val request = HttpRequest(
             method = HttpMethod.GET,
@@ -85,7 +85,7 @@ class RouterTest {
     fun `match should distinguish between HTTP methods`() {
         // Arrange
         val router = Router {
-            get("/users/{id}") { _ -> HttpResponse.ok {} }
+            get("/users/{id}") { _ -> HttpResponse.build {} }
             post("/users") { _ -> HttpResponse.build { status = HttpStatus.CREATED} }
         }
         val getRequest = HttpRequest(
@@ -116,7 +116,7 @@ class RouterTest {
     fun `match should return correct handler for patterns with static paths`() {
         // Arrange
         val router = Router {
-            get("/static/path") { _ -> HttpResponse.ok {} }
+            get("/static/path") { _ -> HttpResponse.build {} }
         }
         val request = HttpRequest(
             method = HttpMethod.GET,
@@ -137,7 +137,7 @@ class RouterTest {
     fun `match should return null for a request with unmatched static path`() {
         // Arrange
         val router = Router {
-            get("/static/path") { _ -> HttpResponse.ok {} }
+            get("/static/path") { _ -> HttpResponse.build {} }
         }
         val request = HttpRequest(
             method = HttpMethod.GET,

@@ -41,7 +41,7 @@ class HttpResponseTest {
         val charset = StandardCharsets.UTF_8
 
         // Act
-        val response = HttpResponse.ok {
+        val response = HttpResponse.build {
             body(content, charset)
         }
 
@@ -61,7 +61,7 @@ class HttpResponseTest {
         val content = "Hello, World!".toByteArray(StandardCharsets.UTF_8)
 
         // Act
-        val response = HttpResponse.ok {
+        val response = HttpResponse.build {
             body(content)
         }
 
@@ -85,7 +85,7 @@ class HttpResponseTest {
         }
 
         // Act
-        val response = HttpResponse.ok {
+        val response = HttpResponse.build {
             body(tempFile)
         }
 
@@ -111,7 +111,7 @@ class HttpResponseTest {
         }
 
         // Act
-        val response = HttpResponse.ok {
+        val response = HttpResponse.build {
             body(tempFile)
         }
 
@@ -135,7 +135,7 @@ class HttpResponseTest {
 
         // Act
         assertThrows<FileNotFoundException> {
-            HttpResponse.ok {
+            HttpResponse.build {
                 body(nonExist)
             }
         }
@@ -152,7 +152,7 @@ class HttpResponseTest {
 
         // Act
         assertThrows<IOException> {
-            HttpResponse.ok {
+            HttpResponse.build {
                 body(tempFile)
             }
         }
@@ -164,7 +164,7 @@ class HttpResponseTest {
     @Test
     fun `should allow creating an HttpResponse with ok status`() {
         // Act
-        val response = HttpResponse.ok()
+        val response = HttpResponse.build {}
 
         // Assert
         assertEquals(HttpStatus.OK, response.status)

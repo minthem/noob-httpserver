@@ -49,7 +49,8 @@ class Server(
                                             val response = handler?.let {
                                                 val context = Context(request)
                                                 it(context)
-                                            } ?: HttpResponse.notFound {
+                                            } ?: HttpResponse.build {
+                                                status = HttpStatus.NOT_FOUND
                                                 header("connection", "close")
                                             }
 
