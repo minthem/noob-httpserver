@@ -3,26 +3,53 @@ package io.github.minthem.noobhttpserver.http
 import java.nio.charset.Charset
 import java.nio.file.Path
 
-data class HttpResponse(
-    val status: HttpStatus = HttpStatus.OK,
-    val headers: HttpHeaders = MutableHttpHeaders(),
+class HttpResponse private constructor(
+    val status: HttpStatus,
+    val headers: HttpHeaders,
+    internal val body: BodyWriteExecutor
 ) {
 
-    internal var body: ResponseBody = EmptyResponseBody()
+    class Builder internal constructor() {
+        var status: HttpStatus = HttpStatus.OK
+        private var headers = MutableHttpHeaders()
+        private var body: BodySpec = BodySpec.Empty
 
-    fun bodyFromText(text: String, charset: Charset = Charsets.UTF_8) = apply {
-        body = TextResponseBody(text, charset)
-    }
+        fun header(key: String, value: String) = apply { headers.add(key, value) }
+        fun header(vararg pairs: Pair<String, String>) = apply { headers.add(*pairs) }
+        fun header(other: HttpHeaders) = apply {
+            other.forEach { key, value -> headers.addAll(key, value) }
+        }
 
-    fun bodyFromBytes(bytes: ByteArray) = apply {
-        body = BinaryResponseBody(bytes)
-    }
+        fun body(text: String, charset: Charset = Charsets.UTF_8) = apply { body = BodySpec.Text(text, charset) }
+        fun body(bytes: ByteArray) = apply { body = BodySpec.Binary(bytes) }
+        fun body(path: Path, charset: Charset = Charsets.UTF_8) = apply { body = BodySpec.File(path, charset) }
 
-    fun bodyFromFile(path: Path) = apply {
-        body = FileResponseBody(path)
+        fun build(): HttpResponse {
+            val executor = BodyWriteExecutorFactory.create(body)
+
+            if ("Content-Type" !in headers) {
+                executor.defaultContentType()?.let { headers.set("Content-Type", it) }
+            }
+
+            if ("Content-Length" !in headers) {
+                executor.contentLength()?.let { headers.set("Content-Length", it.toString()) }
+            }
+
+            return HttpResponse(status, headers, executor)
+        }
     }
 
     companion object {
-        fun ok(header: HttpHeaders = MutableHttpHeaders()) = HttpResponse(HttpStatus.OK, header)
+        fun build(block: Builder.() -> Unit) = Builder().apply(block).build()
+
+        fun ok(block: (Builder.() -> Unit)? = null) = build {
+            status = HttpStatus.OK
+            block?.invoke(this)
+        }
+
+        fun notFound(block: (Builder.() -> Unit)? = null) = build {
+            status = HttpStatus.NOT_FOUND
+            block?.invoke(this)
+        }
     }
 }
