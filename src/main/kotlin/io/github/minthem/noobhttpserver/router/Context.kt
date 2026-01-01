@@ -7,7 +7,7 @@ class Context internal constructor(
     val pathParams: Map<String, String>
 ) {
 
-    // TODO add queryParams, pathParams (decode済み)
+    val path: String by lazy { req.path.decodedPath }
 
-    // TODO ここにdecodeしたpathとかを出力するメソッド追加してもいいかも
+    val queryParams: Map<String, List<String>> by lazy { req.path.decodedQuery }
 }
