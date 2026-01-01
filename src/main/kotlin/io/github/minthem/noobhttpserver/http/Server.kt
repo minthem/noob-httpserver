@@ -47,14 +47,9 @@ class Server(
                                             println(request.path)
                                             println(request.protocol)
 
-                                            val handler = findHandler(request)
-                                            val response = handler?.let {
-                                                val context = Context(request)
-                                                it(context)
-                                            } ?: HttpResponse.build {
-                                                status = HttpStatus.NOT_FOUND
-                                                header("connection", "close")
-                                            }
+                                            val handler = findRequestHandler(request)
+                                            val context = Context(request)
+                                            val response = handler.invoke(context)
 
                                             isKeepAlive = isKeepAlive(
                                                 request.protocol,
@@ -69,7 +64,20 @@ class Server(
                                         }
                                     } catch (e: IllegalStateException) {
                                         println("Connection closed by client. $e")
+                                        return@submit
+                                    } catch (e: HttpResponseException) {
+                                        if (socket.isOpen) {
+                                            writeResponse(socket, HttpProtocol.HTTP_1_1, e.httpResponse)
+                                        }
+                                        return@submit
                                     } catch (e: Exception) {
+                                        if (socket.isOpen) {
+                                            val response = HttpResponse.build {
+                                                status = HttpStatus.INTERNAL_SERVER_ERROR
+                                                header("connection", "close")
+                                            }
+                                            writeResponse(socket, HttpProtocol.HTTP_1_1, response)
+                                        }
                                         e.printStackTrace()
                                         return@submit
                                     }
@@ -93,7 +101,7 @@ class Server(
         routers.add(router)
     }
 
-    private fun findHandler(request: HttpRequest): Handler? {
+    private fun findRequestHandler(request: HttpRequest): Handler {
         for (router in routers) {
             when (val matchResult = router.match(request)) {
                 is RouteMatchResult.Match -> {
