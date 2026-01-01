@@ -2,7 +2,8 @@ package io.github.minthem.noobhttpserver.http
 
 import java.nio.charset.Charset
 
-data class MediaType(
+@ConsistentCopyVisibility
+data class MediaType private constructor(
     val type: String,
     val subtype: String,
     val parameters: Map<String, String> = emptyMap()
