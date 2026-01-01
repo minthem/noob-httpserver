@@ -5,6 +5,12 @@ sealed class HttpHeaders {
 
     protected abstract val values: Map<String, List<String>>
 
+    open val contentType: MediaType?
+        get() {
+            val contentType = getFirst("Content-Type") ?: return null
+            return MediaType.parse(contentType)
+        }
+
     fun getFirst(key: String): String? = this[key]?.firstOrNull()
 
     operator fun get(key: String): List<String>? = values[normalizeKey(key)]
@@ -52,6 +58,16 @@ class MutableHttpHeaders(initial: Map<String, List<String>> = emptyMap()) : Http
 
     override val values: Map<String, List<String>>
         get() = mutableValues
+
+    override var contentType: MediaType?
+        get() = super.contentType
+        set(value) {
+            if (value != null) {
+                set("Content-Type", value.toString())
+            } else {
+                remove("Content-Type")
+            }
+        }
 
     fun add(key: String, value: String) {
         isValidHeader(key, value)

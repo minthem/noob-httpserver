@@ -3,7 +3,6 @@ package io.github.minthem.noobhttpserver.router
 import io.github.minthem.noobhttpserver.http.HttpHeaders
 import io.github.minthem.noobhttpserver.http.HttpRequest
 import java.io.InputStream
-import java.nio.charset.Charset
 
 class Context internal constructor(
     private val req: HttpRequest,
@@ -34,21 +33,10 @@ class Context internal constructor(
     }
 
     fun bodyAsText(): String {
-        val contentType = headers.getFirst("Content-Type")
-        val charset = contentType
-            ?.split(";")
-            ?.map { it.trim() }
-            ?.find { it.startsWith("charset=", ignoreCase = true) }
-            ?.substringAfter("=", "")
-            ?.trim('"')
-            ?.ifBlank { "UTF-8" }
-            ?: "UTF-8"
-
-        val cs = runCatching { Charset.forName(charset) }.getOrElse { Charset.forName("UTF-8") }
-
+        val charset = headers.contentType?.charset ?: Charsets.UTF_8
         return String(
             bodyStream.readBytes(),
-            cs
+            charset
         )
     }
 
