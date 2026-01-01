@@ -41,15 +41,5 @@ class HttpResponse private constructor(
 
     companion object {
         fun build(block: Builder.() -> Unit) = Builder().apply(block).build()
-
-        fun ok(block: (Builder.() -> Unit)? = null) = build {
-            status = HttpStatus.OK
-            block?.invoke(this)
-        }
-
-        fun notFound(block: (Builder.() -> Unit)? = null) = build {
-            status = HttpStatus.NOT_FOUND
-            block?.invoke(this)
-        }
     }
 }

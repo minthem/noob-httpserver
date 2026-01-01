@@ -9,8 +9,7 @@ import io.github.minthem.noobhttpserver.http.HttpStatus
 import io.github.minthem.noobhttpserver.http.MutableHttpHeaders
 import io.github.minthem.noobhttpserver.http.RequestTarget
 import org.junit.jupiter.api.Test
-import kotlin.test.assertNotNull
-import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /**
  * Unit tests for the Router class, which handles mapping HTTP requests to specific handlers
@@ -22,7 +21,7 @@ class RouterTest {
     fun `match should return correct handler for a matching GET request`() {
         // Arrange
         val router = Router {
-            get("/users/{id}") { _ -> HttpResponse.ok {} }
+            get("/users/{id}") { _ -> HttpResponse.build {} }
         }
         val request = HttpRequest(
             method = HttpMethod.GET,
@@ -33,17 +32,17 @@ class RouterTest {
         )
 
         // Act
-        val handler = router.match(request)
+        val result = router.match(request)
 
         // Assert
-        assertNotNull(handler, "A handler should be returned for a matching request.")
+        assertTrue(result is RouteMatchResult.Match, "A handler should be returned for a matching request.")
     }
 
     @Test
     fun `match should return null when no route matches`() {
         // Arrange
         val router = Router {
-            post("/users/{id}") { _ -> HttpResponse.ok {} }
+            post("/users/{id}") { _ -> HttpResponse.build {} }
         }
         val request = HttpRequest(
             method = HttpMethod.GET,
@@ -54,17 +53,20 @@ class RouterTest {
         )
 
         // Act
-        val handler = router.match(request)
+        val result = router.match(request)
 
         // Assert
-        assertNull(handler, "No handler should be returned for a request with an unsupported method.")
+        assertTrue(
+            result is RouteMatchResult.MethodNotAllowed,
+            "No handler should be returned for a request with an unsupported method."
+        )
     }
 
     @Test
     fun `match should handle paths with trailing slashes correctly`() {
         // Arrange
         val router = Router {
-            get("/users/{id}") { _ -> HttpResponse.ok {} }
+            get("/users/{id}") { _ -> HttpResponse.build {} }
         }
         val request = HttpRequest(
             method = HttpMethod.GET,
@@ -75,18 +77,18 @@ class RouterTest {
         )
 
         // Act
-        val handler = router.match(request)
+        val result = router.match(request)
 
         // Assert
-        assertNotNull(handler, "A handler should be returned for a matching request.")
+        assertTrue(result is RouteMatchResult.Match, "A handler should be returned for a matching request.")
     }
 
     @Test
     fun `match should distinguish between HTTP methods`() {
         // Arrange
         val router = Router {
-            get("/users/{id}") { _ -> HttpResponse.ok {} }
-            post("/users") { _ -> HttpResponse.build { status = HttpStatus.CREATED} }
+            get("/users/{id}") { _ -> HttpResponse.build {} }
+            post("/users") { _ -> HttpResponse.build { status = HttpStatus.CREATED } }
         }
         val getRequest = HttpRequest(
             method = HttpMethod.GET,
@@ -104,19 +106,19 @@ class RouterTest {
         )
 
         // Act
-        val getHandler = router.match(getRequest)
-        val postHandler = router.match(postRequest)
+        val getMatch = router.match(getRequest)
+        val postMatch = router.match(postRequest)
 
         // Assert
-        assertNotNull(getHandler, "A handler should be returned for a matching GET request.")
-        assertNotNull(postHandler, "A handler should be returned for a matching POST request.")
+        assertTrue(getMatch is RouteMatchResult.Match, "A handler should be returned for a matching GET request.")
+        assertTrue(postMatch is RouteMatchResult.Match, "A handler should be returned for a matching POST request.")
     }
 
     @Test
     fun `match should return correct handler for patterns with static paths`() {
         // Arrange
         val router = Router {
-            get("/static/path") { _ -> HttpResponse.ok {} }
+            get("/static/path") { _ -> HttpResponse.build {} }
         }
         val request = HttpRequest(
             method = HttpMethod.GET,
@@ -127,17 +129,17 @@ class RouterTest {
         )
 
         // Act
-        val handler = router.match(request)
+        val result = router.match(request)
 
         // Assert
-        assertNotNull(handler, "A handler should be returned for a matching request.")
+        assertTrue(result is RouteMatchResult.Match, "A handler should be returned for a matching request.")
     }
 
     @Test
     fun `match should return null for a request with unmatched static path`() {
         // Arrange
         val router = Router {
-            get("/static/path") { _ -> HttpResponse.ok {} }
+            get("/static/path") { _ -> HttpResponse.build {} }
         }
         val request = HttpRequest(
             method = HttpMethod.GET,
@@ -148,9 +150,12 @@ class RouterTest {
         )
 
         // Act
-        val handler = router.match(request)
+        val result = router.match(request)
 
         // Assert
-        assertNull(handler, "No handler should be returned for a request with an unmatched static path.")
+        assertTrue(
+            result is RouteMatchResult.NotFound,
+            "No handler should be returned for a request with an unmatched static path."
+        )
     }
 }

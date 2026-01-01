@@ -87,9 +87,9 @@ private fun isValidHeader(name: String, value: String) {
     if (!HttpHeaderValidator.isValidFieldName(name)) {
         throw IllegalArgumentException("Invalid header name: $name")
     }
-    if (!HttpHeaderValidator.isValidHeaderValue(value)) throw IllegalArgumentException(
-        "Invalid header value: $value"
-    )
+    if (!HttpHeaderValidator.isValidHeaderValue(value)) {
+        throw IllegalArgumentException("Invalid header value: $value")
+    }
 }
 
 private fun initializeMap(initial: Map<String, List<String>>): MutableMap<String, MutableList<String>> {

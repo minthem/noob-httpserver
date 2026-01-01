@@ -1,5 +1,6 @@
 package io.github.minthem.noobhttpserver.http
 
+import io.github.minthem.noobhttpserver.exception.HttpResponseException
 import io.github.minthem.noobhttpserver.io.ByteChannelReader
 import java.io.InputStream
 import java.nio.ByteBuffer
@@ -22,28 +23,56 @@ internal class HttpRequestParser {
         val requestLine = socketBuffer.readLine()
         val parts = requestLine.split(" ")
         if (parts.size != 3) {
-            throw IllegalArgumentException("Invalid request line: $requestLine")
+            throw HttpResponseException(
+                message = "Invalid request line: $requestLine",
+                httpResponse = HttpResponse.build {
+                    status = HttpStatus.BAD_REQUEST
+                    header("connection", "close")
+                }
+            )
         }
 
-        val method = HttpMethod.fromString(parts[0])
-        val requestTarget = RequestTarget(parts[1])
-        val protocol = HttpProtocol.fromString(parts[2])
-
-        return Triple(method, requestTarget, protocol)
+        return try {
+            val method = HttpMethod.fromString(parts[0])
+            val requestTarget = RequestTarget(parts[1])
+            val protocol = HttpProtocol.fromString(parts[2])
+            Triple(method, requestTarget, protocol)
+        } catch (e: IllegalArgumentException) {
+            throw HttpResponseException(
+                message = "Invalid request line: $requestLine",
+                cause = e,
+                httpResponse = HttpResponse.build {
+                    status = HttpStatus.BAD_REQUEST
+                    header("connection", "close")
+                }
+            )
+        }
     }
 
     private fun parseHeaders(socketBuffer: ByteChannelReader): HttpHeaders {
-        val headers = MutableHttpHeaders()
-        while (true) {
-            val line = socketBuffer.readLine()
-            if (line.isEmpty()) {
-                break
-            }
-            val (name, value) = line.split(":", limit = 2)
-            headers.add(name, value.trimStart())
-        }
+        return try {
+            val headers = MutableHttpHeaders()
 
-        return headers
+            while (true) {
+                val line = socketBuffer.readLine()
+                if (line.isEmpty()) {
+                    break
+                }
+                val (name, value) = line.split(":", limit = 2)
+                headers.add(name, value.trimStart())
+            }
+
+            headers
+        } catch (e: IllegalStateException) {
+            throw HttpResponseException(
+                message = "Invalid headers",
+                cause = e,
+                httpResponse = HttpResponse.build {
+                    status = HttpStatus.BAD_REQUEST
+                    header("connection", "close")
+                }
+            )
+        }
     }
 
     private fun getInputStreamForRequestBody(socketBuffer: ByteChannelReader, headers: HttpHeaders): InputStream {
@@ -51,7 +80,13 @@ internal class HttpRequestParser {
         val isChunked = headers.getFirst("Transfer-Encoding")?.equals("chunked", ignoreCase = true) ?: false
 
         if (contentLength != null && isChunked) {
-            throw IllegalStateException("Content-Length and Transfer-Encoding headers are mutually exclusive")
+            throw HttpResponseException(
+                message = "Content-Length and Transfer-Encoding headers are mutually exclusive",
+                httpResponse = HttpResponse.build {
+                    status = HttpStatus.BAD_REQUEST
+                    header("connection", "close")
+                }
+            )
         }
 
         val source = when {

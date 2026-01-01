@@ -1,8 +1,10 @@
 package io.github.minthem.noobhttpserver.http
 
+import io.github.minthem.noobhttpserver.exception.HttpResponseException
 import io.github.minthem.noobhttpserver.router.Context
 import io.github.minthem.noobhttpserver.router.Handler
 import io.github.minthem.noobhttpserver.router.Router
+import io.github.minthem.noobhttpserver.router.RouteMatchResult
 import java.net.InetSocketAddress
 import java.net.StandardProtocolFamily
 import java.nio.ByteBuffer
@@ -45,13 +47,9 @@ class Server(
                                             println(request.path)
                                             println(request.protocol)
 
-                                            val handler = findHandler(request)
-                                            val response = handler?.let {
-                                                val context = Context(request)
-                                                it(context)
-                                            } ?: HttpResponse.notFound {
-                                                header("connection", "close")
-                                            }
+                                            val handler = findRequestHandler(request)
+                                            val context = Context(request)
+                                            val response = handler.invoke(context)
 
                                             isKeepAlive = isKeepAlive(
                                                 request.protocol,
@@ -66,7 +64,20 @@ class Server(
                                         }
                                     } catch (e: IllegalStateException) {
                                         println("Connection closed by client. $e")
+                                        return@submit
+                                    } catch (e: HttpResponseException) {
+                                        if (socket.isOpen) {
+                                            writeResponse(socket, HttpProtocol.HTTP_1_1, e.httpResponse)
+                                        }
+                                        return@submit
                                     } catch (e: Exception) {
+                                        if (socket.isOpen) {
+                                            val response = HttpResponse.build {
+                                                status = HttpStatus.INTERNAL_SERVER_ERROR
+                                                header("connection", "close")
+                                            }
+                                            writeResponse(socket, HttpProtocol.HTTP_1_1, response)
+                                        }
                                         e.printStackTrace()
                                         return@submit
                                     }
@@ -90,15 +101,36 @@ class Server(
         routers.add(router)
     }
 
-    private fun findHandler(request: HttpRequest): Handler? {
+    private fun findRequestHandler(request: HttpRequest): Handler {
         for (router in routers) {
-            val handler = router.match(request)
-            if (handler != null) {
-                return handler
+            when (val matchResult = router.match(request)) {
+                is RouteMatchResult.Match -> {
+                    return matchResult.handler
+                }
+
+                is RouteMatchResult.MethodNotAllowed -> {
+                    throw HttpResponseException(
+                        message = "Method ${request.method} is not allowed. Allowed methods: ${matchResult.allowedMethods}",
+                        httpResponse = HttpResponse.build {
+                            status = HttpStatus.METHOD_NOT_ALLOWED
+                            header("connection", "close")
+                        }
+                    )
+                }
+
+                RouteMatchResult.NotFound -> {
+                    // ignore
+                }
             }
         }
 
-        return null
+        throw HttpResponseException(
+            message = "No route found for ${request.method} ${request.path}",
+            httpResponse = HttpResponse.build {
+                status = HttpStatus.NOT_FOUND
+                header("connection", "close")
+            }
+        )
     }
 
     // FIXME 無理やり動かしているため、後で直す
