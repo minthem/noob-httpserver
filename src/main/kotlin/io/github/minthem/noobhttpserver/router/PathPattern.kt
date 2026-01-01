@@ -1,6 +1,7 @@
 package io.github.minthem.noobhttpserver.router
 
 import io.github.minthem.noobhttpserver.http.OriginFormValidator
+import io.github.minthem.noobhttpserver.http.UriDecoder
 import io.github.minthem.noobhttpserver.http.RequestTarget
 import java.util.regex.Pattern
 
@@ -22,7 +23,7 @@ internal class PathPattern private constructor(
         val params = mutableMapOf<String, String>()
         for (paramName in paramNames) {
             val value = m.groups[paramName]?.value ?: continue
-            params[paramName] = value
+            params[paramName] = UriDecoder.decodePath(value)
         }
 
         return PathPatternMatchResult.Match(params.toMap())

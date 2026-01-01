@@ -7,7 +7,7 @@ import io.github.minthem.noobhttpserver.http.HttpResponse
 typealias Handler = (Context) -> HttpResponse
 
 internal sealed interface RouteMatchResult {
-    class Match(val handler: Handler) : RouteMatchResult
+    class Match(val handler: Handler, val pathParams: Map<String, String>) : RouteMatchResult
     class MethodNotAllowed(val allowedMethods: Set<HttpMethod>) : RouteMatchResult
     object NotFound : RouteMatchResult
 }
@@ -37,16 +37,17 @@ class Router(init: Router.() -> Unit) {
     }
 
     internal fun match(request: HttpRequest): RouteMatchResult {
-        val matchPattern = routes.filter { it.pattern.match(request.path) is PathPatternMatchResult.Match }
-        if (matchPattern.isEmpty()) {
+        val matches =
+            routes.map { it to it.pattern.match(request.path) }.filter { it.second is PathPatternMatchResult.Match }
+
+        if (matches.isEmpty()) {
             return RouteMatchResult.NotFound
         }
 
-        val matchResult = matchPattern.find { it.method == request.method }
-        return if(matchResult != null) {
-            RouteMatchResult.Match(matchResult.handler)
-        } else {
-            RouteMatchResult.MethodNotAllowed(matchPattern.map { it.method }.toSet())
-        }
+        val matchResult = matches.find { it.first.method == request.method }
+            ?: return RouteMatchResult.MethodNotAllowed(matches.map { it.first.method }.toSet())
+        
+        val pathParams = (matchResult.second as PathPatternMatchResult.Match).pathParams
+        return RouteMatchResult.Match(matchResult.first.handler, pathParams)
     }
 }

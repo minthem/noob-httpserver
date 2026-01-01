@@ -47,9 +47,9 @@ class Server(
                                             println(request.path)
                                             println(request.protocol)
 
-                                            val handler = findRequestHandler(request)
-                                            val context = Context(request)
-                                            val response = handler.invoke(context)
+                                            val match = findRoute(request)
+                                            val context = Context(request, match.pathParams)
+                                            val response = match.handler.invoke(context)
 
                                             isKeepAlive = isKeepAlive(
                                                 request.protocol,
@@ -101,11 +101,11 @@ class Server(
         routers.add(router)
     }
 
-    private fun findRequestHandler(request: HttpRequest): Handler {
+    private fun findRoute(request: HttpRequest): RouteMatchResult.Match {
         for (router in routers) {
             when (val matchResult = router.match(request)) {
                 is RouteMatchResult.Match -> {
-                    return matchResult.handler
+                    return matchResult
                 }
 
                 is RouteMatchResult.MethodNotAllowed -> {
