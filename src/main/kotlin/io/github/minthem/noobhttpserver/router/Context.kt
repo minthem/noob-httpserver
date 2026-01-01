@@ -33,6 +33,24 @@ class Context internal constructor(
         return queryParamAs<T>(key) ?: default
     }
 
-    fun bodyAsText(charset: Charset = Charsets.UTF_8): String = req.bodyStream.bufferedReader(charset).readText()
+    fun bodyAsText(): String {
+        val contentType = headers.getFirst("Content-Type")
+        val charset = contentType
+            ?.split(";")
+            ?.map { it.trim() }
+            ?.find { it.startsWith("charset=", ignoreCase = true) }
+            ?.substringAfter("=", "")
+            ?.trim('"')
+            ?.ifBlank { "UTF-8" }
+            ?: "UTF-8"
+
+        val cs = runCatching { Charset.forName(charset) }.getOrElse { Charset.forName("UTF-8") }
+
+        return String(
+            bodyStream.readBytes(),
+            cs
+        )
+    }
+
     fun bodyAsBytes(): ByteArray = req.bodyStream.readBytes()
 }
