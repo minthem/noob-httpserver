@@ -6,11 +6,6 @@ import io.github.minthem.noobhttpserver.http.HttpResponse
 
 typealias Handler = (Context) -> HttpResponse
 
-internal sealed interface RouteMatchResult {
-    class Match(val handler: Handler, val pathParams: Map<String, String>) : RouteMatchResult
-    class MethodNotAllowed(val allowedMethods: Set<HttpMethod>) : RouteMatchResult
-    object NotFound : RouteMatchResult
-}
 
 class Router(init: Router.() -> Unit) {
 
