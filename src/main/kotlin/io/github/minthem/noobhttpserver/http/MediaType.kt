@@ -13,6 +13,12 @@ data class MediaType private constructor(
         parameters["charset"]?.let { Charset.forName(it) }
     }
 
+    fun isCompatibleWith(other: MediaType): Boolean {
+        val typeMatch = type == "*" || other.type == "*" || type == other.type
+        val subtypeMatch = subtype == "*" || other.subtype == "*" || subtype == other.subtype
+        return typeMatch && subtypeMatch
+    }
+
     override fun toString(): String {
         return if (parameters.isEmpty()) {
             "$type/$subtype"
@@ -26,11 +32,13 @@ data class MediaType private constructor(
         fun parse(contentType: String): MediaType {
             val parts = contentType.split(";").map { it.trim() }
             val fullType = parts[0].split("/")
-            val type = fullType.getOrElse(0, { "*" })
-            val subtype = fullType.getOrElse(1, { "*" })
+
+            val type = fullType.getOrElse(0) { "*" }.lowercase()
+            val subtype = fullType.getOrElse(1) { "*" }.lowercase()
+
             val parameters = parts.drop(1).associate {
                 val pair = it.split("=")
-                pair[0].lowercase() to pair.getOrElse(1, { "" }).trim('"')
+                pair[0].lowercase() to pair.getOrElse(1) { "" }.trim('"')
             }
 
             return MediaType(type, subtype, parameters)
