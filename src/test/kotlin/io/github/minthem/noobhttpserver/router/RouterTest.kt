@@ -18,7 +18,7 @@ import kotlin.test.assertTrue
 class RouterTest {
 
     @Test
-    fun `match should return correct handler for a matching GET request`() {
+    fun `findRoute should return correct handler for a matching GET request`() {
         // Arrange
         val router = Router {
             get("/users/{id}") { _ -> HttpResponse.build {} }
@@ -32,14 +32,14 @@ class RouterTest {
         )
 
         // Act
-        val result = router.match(request)
+        val result = router.findRoute(request)
 
         // Assert
         assertTrue(result is RouteMatchResult.Match, "A handler should be returned for a matching request.")
     }
 
     @Test
-    fun `match should return null when no route matches`() {
+    fun `findRoute should return null when no route matches`() {
         // Arrange
         val router = Router {
             post("/users/{id}") { _ -> HttpResponse.build {} }
@@ -53,7 +53,7 @@ class RouterTest {
         )
 
         // Act
-        val result = router.match(request)
+        val result = router.findRoute(request)
 
         // Assert
         assertTrue(
@@ -63,7 +63,7 @@ class RouterTest {
     }
 
     @Test
-    fun `match should handle paths with trailing slashes correctly`() {
+    fun `findRoute should handle paths with trailing slashes correctly`() {
         // Arrange
         val router = Router {
             get("/users/{id}") { _ -> HttpResponse.build {} }
@@ -77,14 +77,14 @@ class RouterTest {
         )
 
         // Act
-        val result = router.match(request)
+        val result = router.findRoute(request)
 
         // Assert
         assertTrue(result is RouteMatchResult.Match, "A handler should be returned for a matching request.")
     }
 
     @Test
-    fun `match should distinguish between HTTP methods`() {
+    fun `findRoute should distinguish between HTTP methods`() {
         // Arrange
         val router = Router {
             get("/users/{id}") { _ -> HttpResponse.build {} }
@@ -106,8 +106,8 @@ class RouterTest {
         )
 
         // Act
-        val getMatch = router.match(getRequest)
-        val postMatch = router.match(postRequest)
+        val getMatch = router.findRoute(getRequest)
+        val postMatch = router.findRoute(postRequest)
 
         // Assert
         assertTrue(getMatch is RouteMatchResult.Match, "A handler should be returned for a matching GET request.")
@@ -115,7 +115,7 @@ class RouterTest {
     }
 
     @Test
-    fun `match should return correct handler for patterns with static paths`() {
+    fun `findRoute should return correct handler for patterns with static paths`() {
         // Arrange
         val router = Router {
             get("/static/path") { _ -> HttpResponse.build {} }
@@ -129,14 +129,14 @@ class RouterTest {
         )
 
         // Act
-        val result = router.match(request)
+        val result = router.findRoute(request)
 
         // Assert
         assertTrue(result is RouteMatchResult.Match, "A handler should be returned for a matching request.")
     }
 
     @Test
-    fun `match should return null for a request with unmatched static path`() {
+    fun `findRoute should return null for a request with unmatched static path`() {
         // Arrange
         val router = Router {
             get("/static/path") { _ -> HttpResponse.build {} }
@@ -150,7 +150,7 @@ class RouterTest {
         )
 
         // Act
-        val result = router.match(request)
+        val result = router.findRoute(request)
 
         // Assert
         assertTrue(

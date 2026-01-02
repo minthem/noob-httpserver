@@ -31,7 +31,7 @@ class Router(init: Router.() -> Unit) {
         routes.add(Route(method, PathPattern.parse(pattern), handler))
     }
 
-    internal fun match(request: HttpRequest): RouteMatchResult {
+    internal fun findRoute(request: HttpRequest): RouteMatchResult {
         val matches =
             routes.map { it to it.pattern.match(request.path) }.filter { it.second is PathPatternMatchResult.Match }
 
