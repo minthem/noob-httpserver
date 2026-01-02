@@ -14,11 +14,11 @@ internal class RouterRegistry {
         for (router in routers) {
             return when (val matchResult = router.findRoute(request)) {
                 is RouteMatchResult.Match -> matchResult
-                is RouteMatchResult.MethodNotAllowed -> matchResult
-                is RouteMatchResult.NotFound -> continue
+                is RouteMatchResult.MethodNotMatch -> matchResult
+                is RouteMatchResult.NotMatch -> continue
             }
         }
 
-        return RouteMatchResult.NotFound
+        return RouteMatchResult.NotMatch
     }
 }

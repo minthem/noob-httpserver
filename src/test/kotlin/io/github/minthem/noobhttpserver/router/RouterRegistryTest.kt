@@ -57,7 +57,7 @@ class RouterRegistryTest {
 
         // Assert
         assertTrue(
-            result is RouteMatchResult.NotFound,
+            result is RouteMatchResult.NotMatch,
             "RouteMatchResult.NotFound should be returned for an unmatched route."
         )
     }
@@ -82,7 +82,7 @@ class RouterRegistryTest {
 
         // Assert
         assertTrue(
-            result is RouteMatchResult.MethodNotAllowed,
+            result is RouteMatchResult.MethodNotMatch,
             "RouteMatchResult.MethodNotAllowed should be returned for an unsupported method."
         )
     }
@@ -144,7 +144,7 @@ class RouterRegistryTest {
 
         // Assert
         assertTrue(
-            result is RouteMatchResult.NotFound,
+            result is RouteMatchResult.NotMatch,
             "RouteMatchResult.NotFound should be returned when no match is found in any router."
         )
     }

@@ -108,11 +108,11 @@ class Server(
                 return matchResult
             }
 
-            is RouteMatchResult.MethodNotAllowed -> {
+            is RouteMatchResult.MethodNotMatch -> {
                 throw MethodNotAllowException(request.method, matchResult.allowedMethods)
             }
 
-            is RouteMatchResult.NotFound -> {
+            is RouteMatchResult.NotMatch -> {
                 throw RouteNotFoundException(request.method, request.path)
             }
         }

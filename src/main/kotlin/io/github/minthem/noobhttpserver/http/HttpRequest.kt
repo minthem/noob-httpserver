@@ -8,4 +8,9 @@ internal class HttpRequest(
     internal val protocol: HttpProtocol,
     internal val headers: HttpHeaders,
     internal val bodyStream: InputStream,
-)
+) {
+
+    fun withPath(newPath: RequestTarget): HttpRequest {
+        return HttpRequest(method, newPath, protocol, headers, bodyStream)
+    }
+}

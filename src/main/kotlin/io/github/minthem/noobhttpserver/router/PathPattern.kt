@@ -7,18 +7,27 @@ import java.util.regex.Pattern
 
 
 internal sealed interface PathPatternMatchResult {
-    data class Match(val pathParams: Map<String, String>) : PathPatternMatchResult
+    data class Match(
+        val pathParams: Map<String, String>,
+        val remainingPath: String? = null
+    ) : PathPatternMatchResult
+
     object NoMatch : PathPatternMatchResult
 }
 
 
 internal class PathPattern private constructor(
     private val patternRegex: Regex,
-    private val paramNames: List<String>
+    private val paramNames: List<String>,
+    private val isPrefix: Boolean
 ) {
 
     fun match(target: RequestTarget): PathPatternMatchResult {
-        val m = patternRegex.matchEntire(target.rawPath) ?: return PathPatternMatchResult.NoMatch
+        val m = if (isPrefix) {
+            patternRegex.find(target.rawPath)
+        } else {
+            patternRegex.matchEntire(target.rawPath)
+        } ?: return PathPatternMatchResult.NoMatch
 
         val params = mutableMapOf<String, String>()
         for (paramName in paramNames) {
@@ -26,13 +35,22 @@ internal class PathPattern private constructor(
             params[paramName] = UriDecoder.decodePath(value)
         }
 
-        return PathPatternMatchResult.Match(params.toMap())
+        val remainingPath = if (isPrefix) {
+            val remain = target.rawPath.substring(m.range.last + 1)
+            if (remain.isNotEmpty() && remain[0] == '/') {
+                remain
+            } else {
+                "/$remain"
+            }
+        } else null
+
+        return PathPatternMatchResult.Match(params.toMap(), remainingPath)
     }
 
     companion object {
         private val VAR_NAME_REGEX = Regex("\\{([a-zA-Z0-9_]+)}")
 
-        fun parse(pattern: String): PathPattern {
+        fun parse(pattern: String, isPrefix: Boolean = false): PathPattern {
             require(isValidPathPattern(pattern)) { "Invalid path pattern: $pattern" }
 
             val sb = StringBuilder()
@@ -58,9 +76,11 @@ internal class PathPattern private constructor(
                 sb.append(Pattern.quote(pattern.substring(lastIndex)))
             }
 
-            sb.append("/?$")
+            if (!isPrefix) {
+                sb.append("/?$")
+            }
 
-            return PathPattern(sb.toString().toRegex(), paramNames)
+            return PathPattern(sb.toString().toRegex(), paramNames, isPrefix)
         }
 
         private fun isValidPathPattern(pattern: String): Boolean {
