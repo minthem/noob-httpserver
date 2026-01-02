@@ -335,7 +335,54 @@ class HttpHeadersTest {
         fun `addAll should throw exception for empty list existing header`() {
             val headers = MutableHttpHeaders(mapOf("Content-Type" to listOf("application/json")))
             assertThrows<IllegalArgumentException> { headers.addAll("Content-Type", emptyList()) }
+        }
 
+        @Test
+        fun `get content-type should return header value`() {
+            val headers = ImmutableHttpHeaders(mapOf("Content-Type" to listOf("application/json", "text/html")))
+            assertEquals(
+                MediaType.parse("application/json"),
+                headers.contentType,
+                "get content-type should return header value"
+            )
+        }
+        @Test
+        fun `get content-type should return header value with parameter`() {
+            val headers = ImmutableHttpHeaders(mapOf("Content-Type" to listOf("application/json; charset=utf-8", "text/html")))
+            assertEquals(
+                MediaType.parse("application/json; charset=utf-8"),
+                headers.contentType,
+                "get content-type should return header value"
+            )
+        }
+
+        @Test
+        fun `set content-type should set header value`() {
+            val headers = MutableHttpHeaders()
+            headers.contentType = MediaType.parse("application/json")
+            assertEquals(
+                listOf("application/json"),
+                headers["Content-Type"],
+                "set content-type should set header value"
+            )
+        }
+
+        @Test
+        fun `set content-type should set header value with parameter`() {
+            val headers = MutableHttpHeaders()
+            headers.contentType = MediaType.parse("application/json; charset=utf-8")
+            assertEquals(
+                listOf("application/json; charset=utf-8"),
+                headers["Content-Type"],
+                "set content-type should set header value"
+            )
+        }
+
+        @Test
+        fun `set content-type should remove header value when null`() {
+            val headers = MutableHttpHeaders(mapOf("Content-Type" to listOf("application/json")))
+            headers.contentType = null
+            assertNull(headers["Content-Type"], "set content-type should remove header value when null")
         }
     }
 }

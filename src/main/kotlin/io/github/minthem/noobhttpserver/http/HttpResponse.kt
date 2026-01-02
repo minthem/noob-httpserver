@@ -28,7 +28,9 @@ class HttpResponse private constructor(
             val executor = BodyWriteExecutorFactory.create(body)
 
             if ("Content-Type" !in headers) {
-                executor.defaultContentType()?.let { headers.set("Content-Type", it) }
+                executor.defaultContentType()?.let {
+                    headers.contentType = it
+                }
             }
 
             if ("Content-Length" !in headers) {

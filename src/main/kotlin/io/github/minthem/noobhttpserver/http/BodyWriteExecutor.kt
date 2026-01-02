@@ -34,7 +34,7 @@ internal interface BodyWriteExecutor {
     fun writeTo(destination: WritableByteChannel)
 
     fun contentLength(): Long?
-    fun defaultContentType(): String?
+    fun defaultContentType(): MediaType?
 }
 
 
@@ -51,9 +51,9 @@ internal class FileBodyExecutor internal constructor(private val spec: BodySpec.
     }
 
     override fun contentLength(): Long = spec.path.fileSize()
-    override fun defaultContentType(): String {
+    override fun defaultContentType(): MediaType {
         val contentType = Files.probeContentType(spec.path) ?: "text/plain"
-        return "$contentType; charset=${spec.charset.name()}"
+        return MediaType.parse("$contentType; charset=${spec.charset.name()}")
     }
 }
 
@@ -67,7 +67,7 @@ internal class BinaryBodyExecutor internal constructor(private val spec: BodySpe
     }
 
     override fun contentLength(): Long = spec.bytes.size.toLong()
-    override fun defaultContentType(): String = "application/octet-stream"
+    override fun defaultContentType(): MediaType = MediaType.parse("application/octet-stream")
 }
 
 
@@ -83,8 +83,8 @@ internal class TextBodyExecutor internal constructor(
     }
 
     override fun contentLength(): Long = bytes.size.toLong()
-    override fun defaultContentType(): String {
-        return "text/plain; charset=${spec.charset.name()}"
+    override fun defaultContentType(): MediaType {
+        return MediaType.parse("text/plain; charset=${spec.charset.name()}")
     }
 }
 
@@ -95,5 +95,5 @@ internal object EmptyBodyExecutor : BodyWriteExecutor {
     }
 
     override fun contentLength(): Long = 0L
-    override fun defaultContentType(): String? = null
+    override fun defaultContentType(): MediaType? = null
 }
