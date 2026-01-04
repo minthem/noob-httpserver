@@ -1,10 +1,12 @@
 package io.github.minthem.noobhttpserver.http
 
 import io.github.minthem.noobhttpserver.exception.HttpResponseException
+import io.github.minthem.noobhttpserver.exception.MethodNotAllowException
+import io.github.minthem.noobhttpserver.exception.RouteNotFoundException
 import io.github.minthem.noobhttpserver.router.Context
-import io.github.minthem.noobhttpserver.router.Handler
-import io.github.minthem.noobhttpserver.router.Router
 import io.github.minthem.noobhttpserver.router.RouteMatchResult
+import io.github.minthem.noobhttpserver.router.Router
+import io.github.minthem.noobhttpserver.router.RouterRegistry
 import java.net.InetSocketAddress
 import java.net.StandardProtocolFamily
 import java.nio.ByteBuffer
@@ -19,8 +21,7 @@ class Server(
     private val port: UShort
 ) {
 
-
-    private val routers = mutableListOf<Router>()
+    private val routerRegistry = RouterRegistry()
 
     fun start() {
         val addr = InetSocketAddress(port.toInt())
@@ -47,7 +48,7 @@ class Server(
                                             println(request.path)
                                             println(request.protocol)
 
-                                            val match = findRoute(request)
+                                            val match = findHandler(request)
                                             val context = Context(request, match.pathParams)
                                             val response = match.handler.invoke(context)
 
@@ -98,39 +99,23 @@ class Server(
     }
 
     fun addRouter(router: Router) {
-        routers.add(router)
+        routerRegistry.register(router)
     }
 
-    private fun findRoute(request: HttpRequest): RouteMatchResult.Match {
-        for (router in routers) {
-            when (val matchResult = router.match(request)) {
-                is RouteMatchResult.Match -> {
-                    return matchResult
-                }
+    private fun findHandler(request: HttpRequest): RouteMatchResult.Match {
+        when (val matchResult = routerRegistry.find(request)) {
+            is RouteMatchResult.Match -> {
+                return matchResult
+            }
 
-                is RouteMatchResult.MethodNotAllowed -> {
-                    throw HttpResponseException(
-                        message = "Method ${request.method} is not allowed. Allowed methods: ${matchResult.allowedMethods}",
-                        httpResponse = HttpResponse.build {
-                            status = HttpStatus.METHOD_NOT_ALLOWED
-                            header("connection", "close")
-                        }
-                    )
-                }
+            is RouteMatchResult.MethodNotMatch -> {
+                throw MethodNotAllowException(request.method, matchResult.allowedMethods)
+            }
 
-                RouteMatchResult.NotFound -> {
-                    // ignore
-                }
+            is RouteMatchResult.NotMatch -> {
+                throw RouteNotFoundException(request.method, request.path)
             }
         }
-
-        throw HttpResponseException(
-            message = "No route found for ${request.method} ${request.path}",
-            httpResponse = HttpResponse.build {
-                status = HttpStatus.NOT_FOUND
-                header("connection", "close")
-            }
-        )
     }
 
     // FIXME 無理やり動かしているため、後で直す

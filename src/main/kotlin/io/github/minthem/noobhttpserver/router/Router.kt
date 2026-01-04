@@ -6,25 +6,14 @@ import io.github.minthem.noobhttpserver.http.HttpResponse
 
 typealias Handler = (Context) -> HttpResponse
 
-internal sealed interface RouteMatchResult {
-    class Match(val handler: Handler, val pathParams: Map<String, String>) : RouteMatchResult
-    class MethodNotAllowed(val allowedMethods: Set<HttpMethod>) : RouteMatchResult
-    object NotFound : RouteMatchResult
-}
 
 class Router(init: Router.() -> Unit) {
 
-    private val routes = mutableListOf<Route>()
+    private val components = mutableListOf<RouteComponent>()
 
     init {
         init()
     }
-
-    private data class Route(
-        val method: HttpMethod,
-        val pattern: PathPattern,
-        val handler: Handler
-    )
 
     fun get(pattern: String, handler: Handler) = addRoute(HttpMethod.GET, pattern, handler)
     fun post(pattern: String, handler: Handler) = addRoute(HttpMethod.POST, pattern, handler)
@@ -32,22 +21,32 @@ class Router(init: Router.() -> Unit) {
     fun delete(pattern: String, handler: Handler) = addRoute(HttpMethod.DELETE, pattern, handler)
     fun head(pattern: String, handler: Handler) = addRoute(HttpMethod.HEAD, pattern, handler)
 
-    private fun addRoute(method: HttpMethod, pattern: String, handler: Handler) {
-        routes.add(Route(method, PathPattern.parse(pattern), handler))
+    fun group(pattern: String, init: Router.() -> Unit) {
+        val subRouter = Router(init)
+
+        components.add(
+            RouteGroup(PathPattern.parse(pattern.trimEnd('/'), isPrefix = true), subRouter.components)
+        )
     }
 
-    internal fun match(request: HttpRequest): RouteMatchResult {
-        val matches =
-            routes.map { it to it.pattern.match(request.path) }.filter { it.second is PathPatternMatchResult.Match }
+    private fun addRoute(method: HttpMethod, pattern: String, handler: Handler) {
+        components.add(Route(method, PathPattern.parse(pattern.ifBlank { "/" }), handler))
+    }
 
-        if (matches.isEmpty()) {
-            return RouteMatchResult.NotFound
+    internal fun findRoute(request: HttpRequest): RouteMatchResult {
+        var matchResult: RouteMatchResult? = null
+
+        for (component in components) {
+            when (val mr = component.match(request)) {
+                is RouteMatchResult.Match -> return mr
+                is RouteMatchResult.MethodNotMatch -> {
+                    matchResult = mr
+                }
+
+                is RouteMatchResult.NotMatch -> continue
+            }
         }
 
-        val matchResult = matches.find { it.first.method == request.method }
-            ?: return RouteMatchResult.MethodNotAllowed(matches.map { it.first.method }.toSet())
-        
-        val pathParams = (matchResult.second as PathPatternMatchResult.Match).pathParams
-        return RouteMatchResult.Match(matchResult.first.handler, pathParams)
+        return matchResult ?: RouteMatchResult.NotMatch
     }
 }

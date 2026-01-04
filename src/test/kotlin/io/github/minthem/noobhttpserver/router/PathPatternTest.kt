@@ -82,6 +82,22 @@ class PathPatternTest {
     }
 
     @Test
+    fun `testMatch should return true when remains path`() {
+        val pattern = PathPattern.parse("/users/{id}/orders/{orderId}", isPrefix = true)
+
+        when (val result = pattern.match(RequestTarget("/users/42/orders/1234567890/items"))) {
+            is PathPatternMatchResult.Match -> {
+                assertEquals(mapOf("id" to "42", "orderId" to "1234567890"), result.pathParams)
+                assertEquals("/items", result.remainingPath)
+            }
+
+            else -> {
+                fail { "Expected match for /users/{id}/orders/{orderId}/items" }
+            }
+        }
+    }
+
+    @Test
     fun `testNoMatch should return false when path does not match pattern`() {
         val pattern = PathPattern.parse("/users/{id}")
         assertTrue(pattern.match(RequestTarget("/users/")) is PathPatternMatchResult.NoMatch)
