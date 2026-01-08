@@ -4,8 +4,11 @@ import io.github.minthem.noobhttpserver.http.HttpHeaders
 import io.github.minthem.noobhttpserver.http.HttpRequest
 import io.github.minthem.noobhttpserver.http.HttpMethod
 import io.github.minthem.noobhttpserver.http.HttpProtocol
+import io.github.minthem.noobhttpserver.http.Multipart
 import io.github.minthem.noobhttpserver.http.RequestTarget
 import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.DisplayName
+import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import java.io.ByteArrayInputStream
 import java.nio.charset.Charset
@@ -44,11 +47,12 @@ internal class ContextTest {
             headers = HttpHeaders.EMPTY,
             bodyStream = ByteArrayInputStream(ByteArray(0))
         )
-        val context = Context(request, emptyMap())
+        val context = Context(request, mapOf("pkey1" to "pvalue1"))
 
         val result = context.queryParam("key2")
 
         assertNull(result)
+        assertEquals("pvalue1", context.pathParams["pkey1"])
     }
 
     /**
@@ -165,5 +169,125 @@ internal class ContextTest {
         val result = context.bodyAsBytes()
 
         assertArrayEquals(bodyContent.toByteArray(Charset.defaultCharset()), result)
+    }
+
+    @Nested
+    @DisplayName("Multipart Body Parsing Tests")
+    inner class MultipartBodyParsingTests {
+
+        /**
+         * Test for parsing a valid multipart body.
+         */
+        @Test
+        fun `test bodyAsMultipart parses valid multipart body`() {
+            val boundary = "----BoundaryXYZ"
+            val bodyContent = """
+            ------BoundaryXYZ
+            Content-Disposition: form-data; name="field1"
+
+            value1
+            ------BoundaryXYZ
+            Content-Disposition: form-data; name="field2"; filename="file.txt"
+            Content-Type: text/plain
+
+            file content here
+            ------BoundaryXYZ--
+        """.trimIndent().replace("\n", "\r\n")
+            val headers = HttpHeaders.of(
+                "Content-Type" to "multipart/form-data; boundary=$boundary"
+            )
+            val request = HttpRequest(
+                method = HttpMethod.POST,
+                path = RequestTarget("/test"),
+                protocol = HttpProtocol.HTTP_1_1,
+                headers = headers,
+                bodyStream = ByteArrayInputStream(bodyContent.toByteArray(Charset.defaultCharset()))
+            )
+            val context = Context(request, emptyMap())
+
+            val multipartBody = context.bodyAsMultipart()
+            val field1 = multipartBody.part("field1")
+            val field2 = multipartBody.part("field2")
+
+            assertNotNull(field1)
+            assertEquals("value1", (field1 as Multipart.FormField).value)
+            assertNotNull(field2)
+            assertEquals("file content here", (field2 as Multipart.FileUpload).asStream().reader().readText())
+            assertEquals("file.txt", field2.filename)
+        }
+
+        /**
+         * Test for missing boundary in multipart body.
+         */
+        @Test
+        fun `test bodyAsMultipart throws exception if boundary is missing`() {
+            val headers = HttpHeaders.of(
+                "Content-Type" to "multipart/form-data"
+            )
+            val request = HttpRequest(
+                method = HttpMethod.POST,
+                path = RequestTarget("/test"),
+                protocol = HttpProtocol.HTTP_1_1,
+                headers = headers,
+                bodyStream = ByteArrayInputStream(ByteArray(0))
+            )
+            val context = Context(request, emptyMap())
+
+            val exception = assertFailsWith<IllegalStateException> { context.bodyAsMultipart() }
+            assertEquals("Missing boundary parameter", exception.message)
+        }
+
+        /**
+         * Test for invalid Content-Type for multipart body.
+         */
+        @Test
+        fun `test bodyAsMultipart throws exception for invalid Content-Type`() {
+            val headers = HttpHeaders.of(
+                "Content-Type" to "application/json"
+            )
+            val request = HttpRequest(
+                method = HttpMethod.POST,
+                path = RequestTarget("/test"),
+                protocol = HttpProtocol.HTTP_1_1,
+                headers = headers,
+                bodyStream = ByteArrayInputStream(ByteArray(0))
+            )
+            val context = Context(request, emptyMap())
+
+            val exception = assertFailsWith<IllegalStateException> { context.bodyAsMultipart() }
+            assertEquals("Content-Type must be multipart/form-data", exception.message)
+        }
+
+        /**
+         * Test for calling bodyAsMultipart after body stream is already read.
+         */
+        @Test
+        fun `test bodyAsMultipart throws exception if body stream already read`() {
+            val boundary = "----BoundaryXYZ"
+            val bodyContent = """
+            ------BoundaryXYZ
+            Content-Disposition: form-data; name="field1"
+
+            value1
+            ------BoundaryXYZ--
+        """.trimIndent().replace("\n", "\r\n")
+            val headers = HttpHeaders.of(
+                "Content-Type" to "multipart/form-data; boundary=$boundary"
+            )
+            val request = HttpRequest(
+                method = HttpMethod.POST,
+                path = RequestTarget("/test"),
+                protocol = HttpProtocol.HTTP_1_1,
+                headers = headers,
+                bodyStream = ByteArrayInputStream(bodyContent.toByteArray(Charset.defaultCharset()))
+            )
+            val context = Context(request, emptyMap())
+
+            // Read the body as text first to consume the stream
+            context.bodyAsText()
+
+            val exception = assertFailsWith<IllegalStateException> { context.bodyAsMultipart() }
+            assertEquals("Body stream has already been read for multipart parsing", exception.message)
+        }
     }
 }

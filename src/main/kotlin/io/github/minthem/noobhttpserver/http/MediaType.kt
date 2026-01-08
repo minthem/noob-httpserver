@@ -43,5 +43,7 @@ data class MediaType private constructor(
 
             return MediaType(type, subtype, parameters)
         }
+
+        val MULTIPART_FORM_DATA = MediaType("multipart", "form-data")
     }
 }
