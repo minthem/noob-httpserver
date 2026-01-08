@@ -40,6 +40,16 @@ sealed class HttpHeaders {
     companion object {
         @JvmField
         val EMPTY: HttpHeaders = ImmutableHttpHeaders(emptyMap())
+
+        fun of(initial: Map<String, List<String>>): HttpHeaders = ImmutableHttpHeaders(initial)
+
+        fun of(vararg pairs: Pair<String, String>): HttpHeaders {
+            val headers = MutableHttpHeaders()
+            pairs.forEach { (key, value) ->
+                headers.add(key, value)
+            }
+            return headers.toImmutable()
+        }
     }
 }
 
