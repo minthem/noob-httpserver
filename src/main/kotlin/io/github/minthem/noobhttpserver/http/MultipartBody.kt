@@ -1,11 +1,13 @@
 package io.github.minthem.noobhttpserver.http
 
+import java.io.Closeable
 import java.io.InputStream
+import java.nio.file.Files
 
 class MultipartBody internal constructor(
     stream: InputStream,
     boundary: String
-) {
+) : Closeable {
 
     private val parser = MultipartBodyParser(stream, boundary)
     private val readParts = LinkedHashMap<String, Multipart>()
@@ -34,5 +36,18 @@ class MultipartBody internal constructor(
             readParts[part.name] = part
             block(part)
         }
+    }
+
+    override fun close() {
+        readParts.values.forEach { multipart ->
+            if (multipart is Multipart.FileUpload && multipart.file != null) {
+                synchronized(multipart.file) {
+                    multipart.file.let { Files.deleteIfExists(it) }
+                }
+
+            }
+        }
+
+        readParts.clear()
     }
 }

@@ -4,14 +4,17 @@ import io.github.minthem.noobhttpserver.http.HttpHeaders
 import io.github.minthem.noobhttpserver.http.HttpRequest
 import io.github.minthem.noobhttpserver.http.MediaType
 import io.github.minthem.noobhttpserver.http.MultipartBody
+import java.io.Closeable
 import java.io.InputStream
 
 class Context internal constructor(
     private val req: HttpRequest,
     val pathParams: Map<String, String>
-) {
+) : Closeable {
 
     private var readStream: Boolean = false
+
+    private val cleanupActions = mutableListOf<() -> Unit>()
 
     val path: String by lazy { req.path.decodedPath }
     val headers: HttpHeaders = req.headers.toImmutable()
@@ -64,6 +67,22 @@ class Context internal constructor(
             throw IllegalStateException("Body stream has already been read for multipart parsing")
         }
 
-        return MultipartBody(bodyStream, boundary)
+        val mp = MultipartBody(bodyStream, boundary)
+        defer { mp.close() }
+        return mp
+    }
+
+    fun defer(action: () -> Unit) = cleanupActions.add(action)
+
+    override fun close() {
+        cleanupActions.forEach { action ->
+            synchronized(action) {
+                try {
+                    action.invoke()
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+        }
     }
 }
