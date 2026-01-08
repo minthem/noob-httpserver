@@ -47,11 +47,12 @@ internal class ContextTest {
             headers = HttpHeaders.EMPTY,
             bodyStream = ByteArrayInputStream(ByteArray(0))
         )
-        val context = Context(request, emptyMap())
+        val context = Context(request, mapOf("pkey1" to "pvalue1"))
 
         val result = context.queryParam("key2")
 
         assertNull(result)
+        assertEquals("pvalue1", context.pathParams["pkey1"])
     }
 
     /**
