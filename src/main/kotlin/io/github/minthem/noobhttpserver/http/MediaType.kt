@@ -45,5 +45,6 @@ data class MediaType private constructor(
         }
 
         val MULTIPART_FORM_DATA = MediaType("multipart", "form-data")
+        val OCTET_STREAM = MediaType("application", "octet-stream")
     }
 }
