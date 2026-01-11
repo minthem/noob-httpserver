@@ -24,6 +24,9 @@ class HttpResponse private constructor(
         fun body(bytes: ByteArray) = apply { body = BodySpec.Binary(bytes) }
         fun body(path: Path, charset: Charset = Charsets.UTF_8) = apply { body = BodySpec.File(path, charset) }
         fun body(source: CloseableSequence<ByteArray>) = apply { body = BodySpec.Chunked(source) }
+        fun body(source: CloseableSequence<String>, charset: Charset = Charsets.UTF_8) = apply {
+            body = BodySpec.Chunked(source.map { it.toByteArray(charset) }.asCloseable { source.close() })
+        }
 
         fun build(): HttpResponse {
             val executor = BodyWriteExecutorFactory.create(body)
