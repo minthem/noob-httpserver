@@ -12,20 +12,24 @@ class Context internal constructor(
     val pathParams: Map<String, String>
 ) : Closeable {
 
-    private var readStream: Boolean = false
-
-    private val cleanupActions = mutableListOf<() -> Unit>()
-
     val path: String by lazy { req.path.decodedPath }
     val headers: HttpHeaders = req.headers.toImmutable()
     val queryParams: Map<String, List<String>> by lazy { req.path.decodedQuery }
 
+    private var readStream: Boolean = false
+    private val cleanupActions = mutableListOf<() -> Unit>()
     private val bodyStream: InputStream
         get() {
             if (readStream) throw IllegalStateException("Body stream has already been read")
             readStream = true
             return req.bodyStream
         }
+
+    init {
+        defer {
+            req.drainBody()
+        }
+    }
 
     fun queryParam(key: String): String? = queryParams[key]?.firstOrNull()
 
@@ -76,12 +80,10 @@ class Context internal constructor(
 
     override fun close() {
         cleanupActions.forEach { action ->
-            synchronized(action) {
-                try {
-                    action.invoke()
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
+            try {
+                action.invoke()
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }

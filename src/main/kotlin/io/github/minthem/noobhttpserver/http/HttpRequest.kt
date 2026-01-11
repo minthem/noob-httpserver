@@ -1,6 +1,7 @@
 package io.github.minthem.noobhttpserver.http
 
 import java.io.InputStream
+import java.io.OutputStream
 
 internal class HttpRequest(
     internal val method: HttpMethod,
@@ -12,5 +13,9 @@ internal class HttpRequest(
 
     fun withPath(newPath: RequestTarget): HttpRequest {
         return HttpRequest(method, newPath, protocol, headers, bodyStream)
+    }
+
+    fun drainBody() {
+        bodyStream.transferTo(OutputStream.nullOutputStream())
     }
 }

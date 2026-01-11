@@ -41,10 +41,7 @@ class MultipartBody internal constructor(
     override fun close() {
         readParts.values.forEach { multipart ->
             if (multipart is Multipart.FileUpload && multipart.file != null) {
-                synchronized(multipart.file) {
-                    multipart.file.let { Files.deleteIfExists(it) }
-                }
-
+                multipart.file.let { Files.deleteIfExists(it) }
             }
         }
 

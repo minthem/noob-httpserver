@@ -43,14 +43,10 @@ class Server(
                                         while (true) {
                                             val request = HttpRequestParser().parse(socket, buffer)
 
-                                            println(request.headers)
-                                            println(request.method)
-                                            println(request.path)
-                                            println(request.protocol)
-
                                             val match = findHandler(request)
-                                            val context = Context(request, match.pathParams)
-                                            val response = match.handler.invoke(context)
+                                            val response = Context(request, match.pathParams).use { ctx ->
+                                                match.handler.invoke(ctx)
+                                            }
 
                                             isKeepAlive = isKeepAlive(
                                                 request.protocol,

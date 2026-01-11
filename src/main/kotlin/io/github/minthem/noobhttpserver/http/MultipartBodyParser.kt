@@ -28,7 +28,7 @@ internal class MultipartBodyParser(
         if (exhausted) {
             // ボディ終了したので、stream全部読み込んで消費する
             // streamはBodySourceによって、ボディ終端まで読んでくれる
-            stream.readBytes()
+            stream.transferTo(OutputStream.nullOutputStream())
             return null
         }
 
