@@ -76,12 +76,10 @@ class Context internal constructor(
 
     override fun close() {
         cleanupActions.forEach { action ->
-            synchronized(action) {
-                try {
-                    action.invoke()
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
+            try {
+                action.invoke()
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }
