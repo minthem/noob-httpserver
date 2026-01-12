@@ -8,4 +8,5 @@ sealed interface BodySpec {
     class Text(val text: String, val charset: Charset = Charsets.UTF_8) : BodySpec
     class Binary(val bytes: ByteArray) : BodySpec
     class File(val path: Path, val charset: Charset = Charsets.UTF_8) : BodySpec
+    class Chunked(val source: CloseableSequence<ByteArray>) : BodySpec
 }

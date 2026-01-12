@@ -26,6 +26,7 @@ internal object BodyWriteExecutorFactory {
 
             FileBodyExecutor(spec)
         }
+        is BodySpec.Chunked -> ChunkedBodyExecutor(spec)
     }
 }
 
@@ -96,4 +97,33 @@ internal object EmptyBodyExecutor : BodyWriteExecutor {
 
     override fun contentLength(): Long = 0L
     override fun defaultContentType(): MediaType? = null
+}
+
+internal class ChunkedBodyExecutor internal constructor(
+    private val spec: BodySpec.Chunked
+) : BodyWriteExecutor {
+    override fun writeTo(destination: WritableByteChannel) {
+        val endLine = "\r\n"
+        spec.source.use { source ->
+            source.forEach { chunk ->
+                val chunkSizeLine = chunk.size.toLong().toString(16) + endLine
+                writeBytes(destination, chunkSizeLine.toByteArray())
+                writeBytes(destination, chunk)
+                writeBytes(destination, endLine.toByteArray())
+            }
+
+            val lastChunkSizeLine = "0${endLine}${endLine}"
+            writeBytes(destination, lastChunkSizeLine.toByteArray())
+        }
+    }
+
+    private fun writeBytes(destination: WritableByteChannel, bytes: ByteArray) {
+        val buffer = ByteBuffer.wrap(bytes).position(0).limit(bytes.size)
+        while (buffer.hasRemaining()) {
+            destination.write(buffer)
+        }
+    }
+
+    override fun contentLength(): Long? = null
+    override fun defaultContentType(): MediaType = MediaType.OCTET_STREAM
 }

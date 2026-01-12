@@ -124,25 +124,9 @@ class Server(
         response.headers.forEach { key, values ->
             values.forEach { value ->
                 val writeLine = "$key: $value\r\n".toByteArray(Charsets.US_ASCII)
+                buffer.put(writeLine)
                 // FIXME ヘッダ長がバッファより長いと破綻するため、要調整
-                if (buffer.remaining() < writeLine.size) {
-                    buffer.flip()
-                    val written = socket.write(buffer)
-                    if (written < 0) throw IllegalStateException("Unexpected end of stream")
-                    buffer.compact()
-                }
             }
-        }
-
-        if ("content-type" !in response.headers && response.body.defaultContentType() != null) {
-            val writeLine = "Content-Type: ${response.body.defaultContentType()}\r\n".toByteArray(Charsets.US_ASCII)
-            buffer.put(writeLine)
-        }
-
-        if ("content-length" !in response.headers) {
-            val contentLength = response.body.contentLength()
-            val writeLine = "Content-Length: $contentLength\r\n".toByteArray(Charsets.US_ASCII)
-            buffer.put(writeLine)
         }
 
         if ("date" !in response.headers) {
@@ -153,8 +137,8 @@ class Server(
         }
 
         buffer.put("\r\n".toByteArray(Charsets.US_ASCII))
+        buffer.flip()
         while (buffer.hasRemaining()) {
-            buffer.flip()
             val written = socket.write(buffer)
             if (written < 0) throw IllegalStateException("Unexpected end of stream")
 //            buffer.compact()
