@@ -3,6 +3,8 @@ package io.github.minthem.noobhttpserver.http
 import io.github.minthem.noobhttpserver.exception.HttpResponseException
 import io.github.minthem.noobhttpserver.exception.MethodNotAllowException
 import io.github.minthem.noobhttpserver.exception.RouteNotFoundException
+import io.github.minthem.noobhttpserver.io.TimeoutByteChannel
+import io.github.minthem.noobhttpserver.io.TimeoutExecutor
 import io.github.minthem.noobhttpserver.router.Context
 import io.github.minthem.noobhttpserver.router.RouteMatchResult
 import io.github.minthem.noobhttpserver.router.Router
@@ -22,7 +24,9 @@ class Server(
 ) {
 
     private val routerRegistry = RouterRegistry()
+    private val timeoutExecutor = TimeoutExecutor(Executors.newSingleThreadScheduledExecutor())
 
+    // TODO いい感じに処理を別メソッドに抽出する
     fun start() {
         val addr = InetSocketAddress(port.toInt())
         try {
@@ -38,26 +42,35 @@ class Server(
                                     println("--------------- Start new session. ---------------")
                                     var isKeepAlive = false
                                     try {
+                                        // TODO threadで逐次allocせずに、poolから取り出すようにして生成コストを抑える
                                         val buffer = ByteBuffer.allocate(8192)
                                         buffer.flip()
+                                        val timeoutByteChannel = TimeoutByteChannel(
+                                            socket, timeoutExecutor,
+                                            30000, // TODO Parameterize
+                                            30000, // TODO Parameterize
+                                        )
                                         while (true) {
-                                            val request = HttpRequestParser().parse(socket, buffer)
+                                            timeoutExecutor.run(120000) {
+                                                // TODO keep-aliveの場合は、idle timeoutとして長めの時間、待機できるようにする
+                                                val request = HttpRequestParser().parse(timeoutByteChannel, buffer)
 
-                                            val match = findHandler(request)
-                                            val response = Context(request, match.pathParams).use { ctx ->
-                                                match.handler.invoke(ctx)
+                                                val match = findHandler(request)
+                                                val response = Context(request, match.pathParams).use { ctx ->
+                                                    match.handler.invoke(ctx)
+                                                }
+
+                                                isKeepAlive = isKeepAlive(
+                                                    request.protocol,
+                                                    request.headers
+                                                ) && !(response.headers["Connection"]?.contains("close") ?: false)
+
+                                                writeResponse(socket, request.protocol, response)
+
+                                                if (!isKeepAlive) return@run
+
+                                                println("Keep-Alive session, reuse connection.")
                                             }
-
-                                            isKeepAlive = isKeepAlive(
-                                                request.protocol,
-                                                request.headers
-                                            ) && !(response.headers["Connection"]?.contains("close") ?: false)
-
-                                            writeResponse(socket, request.protocol, response)
-
-                                            if (!isKeepAlive) break
-
-                                            println("Keep-Alive session, reuse connection.")
                                         }
                                     } catch (e: IllegalStateException) {
                                         println("Connection closed by client. $e")
