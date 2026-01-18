@@ -249,22 +249,6 @@ class HttpHeadersTest {
         }
 
         @Test
-        fun `addAll should throw exception for invalid header name`() {
-            val headers = MutableHttpHeaders()
-            assertThrows<IllegalArgumentException> {
-                headers.addAll("Invalid Header", listOf("value1", "value2"))
-            }
-        }
-
-        @Test
-        fun `addAll should throw exception for invalid header values`() {
-            val headers = MutableHttpHeaders()
-            assertThrows<IllegalArgumentException> {
-                headers.addAll("Content-Type", listOf("validValue", "Invalid\nValue"))
-            }
-        }
-
-        @Test
         fun `addAll should work with normalized keys`() {
             val headers = MutableHttpHeaders()
             headers.addAll("Content-Type", listOf("application/json"))
@@ -293,50 +277,6 @@ class HttpHeadersTest {
 
     @Nested
     inner class InvalidHeaders {
-        @Test
-        fun `invalid initial header name`() {
-            assertThrows<IllegalArgumentException> { ImmutableHttpHeaders(mapOf("Invalid Header" to listOf("value"))) }
-            assertThrows<IllegalArgumentException> { MutableHttpHeaders(mapOf("Invalid Header" to listOf("value"))) }
-        }
-
-        @Test
-        fun `invalid initial header value`() {
-            assertThrows<IllegalArgumentException> { ImmutableHttpHeaders(mapOf("Content-Type" to listOf("Invalid Value\n"))) }
-            assertThrows<IllegalArgumentException> { MutableHttpHeaders(mapOf("Content-Type" to listOf("Invalid Value\n"))) }
-        }
-
-        @Test
-        fun `invalid header name add`() {
-            assertThrows<IllegalArgumentException> { MutableHttpHeaders().add("Invalid Header", "value") }
-        }
-
-        @Test
-        fun `invalid header value add`() {
-            assertThrows<IllegalArgumentException> { MutableHttpHeaders().add("Content-Type", "Invalid Value\n") }
-        }
-
-        @Test
-        fun `invalid header name set`() {
-            assertThrows<IllegalArgumentException> { MutableHttpHeaders().set("Invalid Header", "value") }
-        }
-
-        @Test
-        fun `invalid header value set`() {
-            assertThrows<IllegalArgumentException> { MutableHttpHeaders().set("Content-Type", "Invalid Value\n") }
-        }
-
-        @Test
-        fun `addAll should throw exception for empty list`() {
-            val headers = MutableHttpHeaders()
-            assertThrows<IllegalArgumentException> { headers.addAll("Non-Existent-Header", emptyList()) }
-        }
-
-        @Test
-        fun `addAll should throw exception for empty list existing header`() {
-            val headers = MutableHttpHeaders(mapOf("Content-Type" to listOf("application/json")))
-            assertThrows<IllegalArgumentException> { headers.addAll("Content-Type", emptyList()) }
-        }
-
         @Test
         fun `get content-type should return header value`() {
             val headers = ImmutableHttpHeaders(mapOf("Content-Type" to listOf("application/json", "text/html")))

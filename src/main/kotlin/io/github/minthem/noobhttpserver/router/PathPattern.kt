@@ -1,8 +1,7 @@
 package io.github.minthem.noobhttpserver.router
 
-import io.github.minthem.noobhttpserver.http.OriginFormValidator
-import io.github.minthem.noobhttpserver.http.UriDecoder
 import io.github.minthem.noobhttpserver.http.RequestTarget
+import io.github.minthem.noobhttpserver.http.UriDecoder
 import java.util.regex.Pattern
 
 
@@ -90,11 +89,6 @@ internal class PathPattern private constructor(
 
             // not close bracket or open bracket
             if (normalizePattern.contains("{") || normalizePattern.contains("}")) {
-                return false
-            }
-
-            // validate path pattern (rfc3986)
-            if (!OriginFormValidator.isValidPath(normalizePattern)) {
                 return false
             }
 

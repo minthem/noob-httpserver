@@ -80,7 +80,6 @@ class MutableHttpHeaders(initial: Map<String, List<String>> = emptyMap()) : Http
         }
 
     fun add(key: String, value: String) {
-        isValidHeader(key, value)
         val normalizedKey = normalizeKey(key)
         mutableValues.getOrPut(normalizedKey) { mutableListOf() }.add(value)
     }
@@ -88,13 +87,11 @@ class MutableHttpHeaders(initial: Map<String, List<String>> = emptyMap()) : Http
     fun add(vararg pairs: Pair<String, String>) = pairs.forEach { (key, value) -> add(key, value) }
 
     fun addAll(key: String, values: List<String>) {
-        isValidHeader(key, values)
         val normalizedKey = normalizeKey(key)
         mutableValues.getOrPut(normalizedKey) { mutableListOf() }.addAll(values)
     }
 
     fun set(key: String, value: String) {
-        isValidHeader(key, value)
         val normalizedKey = normalizeKey(key)
         mutableValues[normalizedKey] = mutableListOf(value)
     }
@@ -109,19 +106,9 @@ class MutableHttpHeaders(initial: Map<String, List<String>> = emptyMap()) : Http
     override fun toMutable(): MutableHttpHeaders = this
 }
 
-private fun isValidHeader(name: String, value: String) {
-    if (!HttpHeaderValidator.isValidFieldName(name)) {
-        throw IllegalArgumentException("Invalid header name: $name")
-    }
-    if (!HttpHeaderValidator.isValidHeaderValue(value)) {
-        throw IllegalArgumentException("Invalid header value: $value")
-    }
-}
-
 private fun initializeMap(initial: Map<String, List<String>>): MutableMap<String, MutableList<String>> {
     val map = HashMap<String, MutableList<String>>()
     initial.forEach { (key, values) ->
-        isValidHeader(key, values)
         val normalizedKey = normalizeKey(key)
 
         val existing = map[normalizedKey] ?: mutableListOf()
@@ -129,20 +116,6 @@ private fun initializeMap(initial: Map<String, List<String>>): MutableMap<String
         map[normalizedKey] = existing
     }
     return map
-}
-
-private fun isValidHeader(name: String, values: List<String>) {
-    if (!HttpHeaderValidator.isValidFieldName(name)) {
-        throw IllegalArgumentException("Invalid header name: $name")
-    }
-
-    if (values.isEmpty()) throw IllegalArgumentException("Header values cannot be empty")
-
-    values.forEach { value ->
-        if (!HttpHeaderValidator.isValidHeaderValue(value)) throw IllegalArgumentException(
-            "Invalid header value: $value"
-        )
-    }
 }
 
 private fun normalizeKey(key: String) = key.lowercase()

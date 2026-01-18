@@ -1,6 +1,8 @@
 package io.github.minthem.noobhttpserver.http
 
 import io.github.minthem.noobhttpserver.io.ByteChannelReader
+import io.github.minthem.noobhttpserver.io.ByteReadStream
+import java.io.ByteArrayOutputStream
 
 internal interface BodySource {
 
@@ -9,7 +11,7 @@ internal interface BodySource {
 
 
 internal class FixedLengthBodySource(
-    private val sockerBuffer: ByteChannelReader,
+    private val stream: ByteReadStream,
     private val length: Long
 ) : BodySource {
 
@@ -32,7 +34,7 @@ internal class FixedLengthBodySource(
         }
 
         val canRead = minOf(remaining, len.toLong()).toInt()
-        val n = sockerBuffer.read(b, off, canRead)
+        val n = stream.read(b, off, canRead)
 
         if (n > 0) {
             remaining -= n
@@ -43,7 +45,7 @@ internal class FixedLengthBodySource(
 }
 
 internal class ChunkedBodySource(
-    private val sockerBuffer: ByteChannelReader
+    private val stream: ByteReadStream,
 ) : BodySource {
 
     private enum class State {
@@ -70,7 +72,7 @@ internal class ChunkedBodySource(
         while (true) {
             when (state) {
                 State.READING_CHUNK_SIZE -> {
-                    val line = sockerBuffer.tryReadLine() ?: return 0
+                    val line = readLine()
 
                     // chunk-data末尾のCRLFを読み飛ばす
                     if (line.isEmpty()) {
@@ -87,7 +89,7 @@ internal class ChunkedBodySource(
 
                 State.READING_CHUNK_DATA -> {
                     val canRead = minOf(chunkRemain, len.toLong()).toInt()
-                    val n = sockerBuffer.read(b, off, canRead)
+                    val n = stream.read(b, off, canRead)
                     if (n > 0) {
                         chunkRemain -= n
                         if (chunkRemain == 0L) {
@@ -99,8 +101,7 @@ internal class ChunkedBodySource(
 
                 State.READING_TRAILER -> {
                     while (true) {
-                        @Suppress("unused")
-                        val trailer = sockerBuffer.tryReadLine() ?: return 0
+                        readLine() // trailer
                         break
                     }
                     exhausted = true
@@ -108,5 +109,19 @@ internal class ChunkedBodySource(
                 }
             }
         }
+    }
+
+    private fun readLine(): String {
+        val buffer = ByteArrayOutputStream()
+        while (true) {
+            val b = stream.next()
+            if (b == '\r'.code.toByte() && stream.peak() == '\n'.code) {
+                stream.next()
+                break
+            }
+            buffer.write(b.toInt())
+        }
+
+        return buffer.toString()
     }
 }
