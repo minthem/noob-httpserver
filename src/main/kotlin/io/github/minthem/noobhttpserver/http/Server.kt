@@ -3,6 +3,7 @@ package io.github.minthem.noobhttpserver.http
 import io.github.minthem.noobhttpserver.exception.HttpResponseException
 import io.github.minthem.noobhttpserver.exception.MethodNotAllowException
 import io.github.minthem.noobhttpserver.exception.RouteNotFoundException
+import io.github.minthem.noobhttpserver.io.ByteChannelReadStream
 import io.github.minthem.noobhttpserver.io.TimeoutByteChannel
 import io.github.minthem.noobhttpserver.io.TimeoutExecutor
 import io.github.minthem.noobhttpserver.router.Context
@@ -41,6 +42,7 @@ class Server(
                                 clientSocket.use { socket ->
                                     println("--------------- Start new session. ---------------")
                                     var isKeepAlive = false
+                                    val parser = HttpRequestParser()
                                     try {
                                         // TODO threadで逐次allocせずに、poolから取り出すようにして生成コストを抑える
                                         val buffer = ByteBuffer.allocate(8192)
@@ -53,7 +55,8 @@ class Server(
                                         while (true) {
                                             timeoutExecutor.run(120000) {
                                                 // TODO keep-aliveの場合は、idle timeoutとして長めの時間、待機できるようにする
-                                                val request = HttpRequestParser().parse(timeoutByteChannel, buffer)
+                                                val stream = ByteChannelReadStream(timeoutByteChannel, buffer)
+                                                val request = parser.parse(stream)
 
                                                 val match = findHandler(request)
                                                 val response = Context(request, match.pathParams).use { ctx ->
