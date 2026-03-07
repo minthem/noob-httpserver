@@ -5,17 +5,15 @@ sealed class HttpHeaders {
 
     protected abstract val values: Map<String, List<String>>
 
-    open val contentType: MediaType?
-        get() {
-            val contentType = getFirst("Content-Type") ?: return null
-            return MediaType.parse(contentType)
-        }
+    operator fun get(key: String): String? {
+        val list = values[key.lowercase()] ?: return null
+        if (list.isEmpty()) return null
+        return list.joinToString(", ")
+    }
 
-    fun getFirst(key: String): String? = this[key]?.firstOrNull()
+    fun getAll(key: String): List<String> = values[key.lowercase()] ?: emptyList()
 
-    operator fun get(key: String): List<String>? = values[normalizeKey(key)]
-
-    operator fun contains(key: String): Boolean = values.containsKey(normalizeKey(key))
+    operator fun contains(key: String): Boolean = values.containsKey(key.lowercase())
 
     fun forEach(action: (String, List<String>) -> Unit) {
         values.forEach { (key, values) -> action(key, values.toList()) }
@@ -69,35 +67,29 @@ class MutableHttpHeaders(initial: Map<String, List<String>> = emptyMap()) : Http
     override val values: Map<String, List<String>>
         get() = mutableValues
 
-    override var contentType: MediaType?
-        get() = super.contentType
-        set(value) {
-            if (value != null) {
-                set("Content-Type", value.toString())
-            } else {
-                remove("Content-Type")
-            }
-        }
-
     fun add(key: String, value: String) {
-        val normalizedKey = normalizeKey(key)
+        val normalizedKey = key.lowercase()
         mutableValues.getOrPut(normalizedKey) { mutableListOf() }.add(value)
     }
 
     fun add(vararg pairs: Pair<String, String>) = pairs.forEach { (key, value) -> add(key, value) }
 
     fun addAll(key: String, values: List<String>) {
-        val normalizedKey = normalizeKey(key)
+        val normalizedKey = key.lowercase()
         mutableValues.getOrPut(normalizedKey) { mutableListOf() }.addAll(values)
     }
 
-    fun set(key: String, value: String) {
-        val normalizedKey = normalizeKey(key)
-        mutableValues[normalizedKey] = mutableListOf(value)
+    operator fun set(key: String, value: String?) {
+        val normalizedKey = key.lowercase()
+        if (value == null) {
+            remove(normalizedKey)
+        } else {
+            mutableValues[normalizedKey] = mutableListOf(value)
+        }
     }
 
     fun remove(key: String) {
-        val normalizedKey = normalizeKey(key)
+        val normalizedKey = key.lowercase()
         mutableValues.remove(normalizedKey)
     }
 
@@ -109,7 +101,7 @@ class MutableHttpHeaders(initial: Map<String, List<String>> = emptyMap()) : Http
 private fun initializeMap(initial: Map<String, List<String>>): MutableMap<String, MutableList<String>> {
     val map = HashMap<String, MutableList<String>>()
     initial.forEach { (key, values) ->
-        val normalizedKey = normalizeKey(key)
+        val normalizedKey = key.lowercase()
 
         val existing = map[normalizedKey] ?: mutableListOf()
         existing.addAll(values)
@@ -117,5 +109,3 @@ private fun initializeMap(initial: Map<String, List<String>>): MutableMap<String
     }
     return map
 }
-
-private fun normalizeKey(key: String) = key.lowercase()

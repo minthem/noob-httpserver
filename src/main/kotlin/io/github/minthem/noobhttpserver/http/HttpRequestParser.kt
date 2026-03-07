@@ -64,8 +64,9 @@ internal class HttpRequestParser {
     }
 
     private fun getInputStreamForRequestBody(stream: ByteReadStream, headers: HttpHeaders): InputStream {
-        val contentLength = headers.getFirst("Content-Length")?.toLong()
-        val isChunked = headers.getFirst("Transfer-Encoding")?.equals("chunked", ignoreCase = true) ?: false
+        val contentLength = headers.contentLength
+        val isChunked = headers["Transfer-Encoding"]?.equals("chunked", ignoreCase = true) ?: false
+
 
         if (contentLength != null && isChunked) {
             throw HttpResponseException(
