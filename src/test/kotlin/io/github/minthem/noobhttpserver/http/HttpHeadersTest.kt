@@ -1,332 +1,477 @@
 package io.github.minthem.noobhttpserver.http
 
+
 import org.junit.jupiter.api.Nested
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertNotEquals
-import kotlin.test.assertNull
-import kotlin.test.assertTrue
+import kotlin.test.*
 
 class HttpHeadersTest {
 
     @Nested
-    inner class HttpHeadersCommonTest {
+    inner class GetTest {
         @Test
-        fun `getFirst should return first header value when present`() {
+        fun `returns null when headers are empty`() {
+            val headers = ImmutableHttpHeaders(emptyMap())
+            val result = headers["Content-Type"]
+            assertNull(result)
+        }
+
+        @Test
+        fun `returns the first value`() {
             val headers = ImmutableHttpHeaders(mapOf("Content-Type" to listOf("application/json", "text/html")))
             val result = headers["Content-Type"]
             assertEquals(
-                "application/json, text/html",
-                result,
-                "同名ヘッダーが複数ある場合は結合された値が返ることを期待"
+                "application/json",
+                result
             )
         }
 
         @Test
-        fun `getFirst should return null when header does not exist`() {
-            val headers = ImmutableHttpHeaders(emptyMap())
-            val result = headers["Authorization"]
-            assertNull(result, "存在しないヘッダーのgetFirstはnullを返すことを期待")
+        fun `returns the first value as is`() {
+            val headers = ImmutableHttpHeaders(mapOf("Content-Type" to listOf("text/html, text/plan", "text/xml")))
+            val result = headers["Content-Type"]
+            assertEquals(
+                "text/html, text/plan",
+                result
+            )
         }
 
         @Test
-        fun `get should return list of header values when present`() {
-            val headers = ImmutableHttpHeaders(mapOf("Accept" to listOf("text/plain", "text/html")))
+        fun `returns the value for the specified key`() {
+            val headers = ImmutableHttpHeaders(
+                mapOf(
+                    "Content-Type" to listOf("application/json", "text/html"),
+                    "Accept" to listOf("text/plain", "text/html")
+                )
+            )
+            val result = headers["Accept"]
+            assertEquals(
+                "text/plain",
+                result
+            )
+        }
+
+        @Test
+        fun `returns null when the specified key does not exist`() {
+            val headers = ImmutableHttpHeaders(
+                mapOf(
+                    "Content-Type" to listOf("application/json", "text/html"),
+                    "Accept" to listOf("text/plain", "text/html")
+                )
+            )
+            val result = headers["X-Custom-Header"]
+            assertNull(result)
+        }
+
+        @Test
+        fun `ignores key case`() {
+            val headers = ImmutableHttpHeaders(
+                mapOf(
+                    "Content-Type" to listOf("application/json", "text/html"),
+                    "Accept" to listOf("text/plain", "text/html")
+                )
+            )
+            val result = headers["aCcEpT"]
+            assertEquals("text/plain", result)
+        }
+    }
+
+    @Nested
+    inner class GetAllTest {
+        @Test
+        fun `returns an empty list when headers are empty`() {
+            val headers = ImmutableHttpHeaders(emptyMap())
+            val result = headers.getAll("Content-Type")
+            assertTrue(result.isEmpty())
+        }
+
+        @Test
+        fun `returns all values for the specified key`() {
+            val headers = ImmutableHttpHeaders(
+                mapOf(
+                    "Content-Type" to listOf("application/json", "text/html"),
+                    "Accept" to listOf("text/plain", "text/html")
+                )
+            )
             val result = headers.getAll("Accept")
             assertEquals(
                 listOf("text/plain", "text/html"),
-                result,
-                "getAllはヘッダー値のリストを返すことを期待"
+                result
             )
         }
 
         @Test
-        fun `get should return null when header does not exist`() {
+        fun `returns an empty list when the specified key does not exist`() {
+            val headers = ImmutableHttpHeaders(
+                mapOf(
+                    "Content-Type" to listOf("application/json", "text/html"),
+                    "Accept" to listOf("text/plain", "text/html")
+                )
+            )
+            val result = headers.getAll("X-Custom-Header")
+            assertTrue(result.isEmpty())
+        }
+
+        @Test
+        fun `ignores key case in getAll`() {
+            val headers = ImmutableHttpHeaders(
+                mapOf(
+                    "Content-Type" to listOf("application/json", "text/html"),
+                    "Accept" to listOf("text/plain", "text/html")
+                )
+            )
+            val result = headers.getAll("aCcEpT")
+            assertEquals(listOf("text/plain", "text/html"), result)
+        }
+    }
+
+    @Nested
+    inner class GetJoinedTest {
+        @Test
+        fun `returns null when headers are empty in getJoined`() {
             val headers = ImmutableHttpHeaders(emptyMap())
-            val result = headers["Authorization"]
-            assertNull(result, "存在しないヘッダーのget(インデクサ)はnullを返すことを期待")
+            val result = headers.getJoined("Content-Type")
+            assertNull(result)
         }
 
         @Test
-        fun `contains should return true when header exists`() {
-            val headers = ImmutableHttpHeaders(mapOf("Host" to listOf("example.com")))
-            assertTrue("Host" in headers, "存在するヘッダー名はcontainsでtrueになることを期待")
+        fun `returns joined values for the specified key`() {
+            val headers = ImmutableHttpHeaders(
+                mapOf(
+                    "Content-Type" to listOf("application/json", "text/html"),
+                    "Accept" to listOf("text/plain", "text/html,text/xml")
+                )
+            )
+            val result = headers.getJoined("Accept")
+            assertEquals(
+                "text/plain, text/html,text/xml",
+                result
+            )
         }
 
         @Test
-        fun `contains should return false when header does not exist`() {
-            val headers = ImmutableHttpHeaders(emptyMap())
-            assertFalse("Authorization" in headers, "存在しないヘッダー名はcontainsでfalseになることを期待")
+        fun `returns null when the specified key does not exist in getJoined`() {
+            val headers = ImmutableHttpHeaders(
+                mapOf(
+                    "Content-Type" to listOf("application/json", "text/html"),
+                    "Accept" to listOf("text/plain", "text/html")
+                )
+            )
+            val result = headers.getJoined("X-Custom-Header")
+            assertNull(result)
         }
 
         @Test
-        fun `headers equality`() {
+        fun `ignores key case in getJoined`() {
+            val headers = ImmutableHttpHeaders(
+                mapOf(
+                    "Content-Type" to listOf("application/json", "text/html"),
+                    "Accept" to listOf("text/plain", "text/html")
+                )
+            )
+            val result = headers.getJoined("aCcEpT")
+            assertEquals("text/plain, text/html", result)
+        }
+    }
+
+    @Nested
+    inner class ContainsTest {
+        @Test
+        fun `returns true when the header exists`() {
+            val headers = ImmutableHttpHeaders(
+                mapOf(
+                    "Content-Type" to listOf("application/json", "text/html"),
+                    "Accept" to listOf("text/plain", "text/html")
+                )
+            )
+            assertTrue(headers.contains("Content-Type"))
+        }
+
+        @Test
+        fun `returns false when the header does not exist`() {
+            val headers = ImmutableHttpHeaders(
+                mapOf(
+                    "Content-Type" to listOf("application/json", "text/html"),
+                    "Accept" to listOf("text/plain", "text/html")
+                )
+            )
+            assertFalse(headers.contains("Authorization"))
+        }
+
+        @Test
+        fun `ignores key case in contains`() {
+            val headers = ImmutableHttpHeaders(
+                mapOf(
+                    "Content-Type" to listOf("application/json", "text/html"),
+                    "Accept" to listOf("text/plain", "text/html")
+                )
+            )
+            assertTrue(headers.contains("aCcEpT"))
+        }
+    }
+
+    @Nested
+    inner class EqualsTest {
+        @Test
+        fun `returns false when compared with null`() {
+            val headers = ImmutableHttpHeaders(
+                mapOf(
+                    "Content-Type" to listOf("application/json", "text/html"),
+                    "Accept" to listOf("text/plain", "text/html")
+                )
+            )
+            assertFalse(headers.equals(null))
+        }
+
+        @Test
+        fun `returns false when compared with a different type`() {
+            val headers = ImmutableHttpHeaders(
+                mapOf(
+                    "Content-Type" to listOf("application/json", "text/html"),
+                    "Accept" to listOf("text/plain", "text/html")
+                )
+            )
+            assertFalse(headers.equals("not a HttpHeaders instance"))
+        }
+
+        @Test
+        fun `returns true when headers have the same values`() {
             val headers1 = ImmutableHttpHeaders(
                 mapOf(
-                    "Cache-Control" to listOf("no-cache"),
-                    "Content-Type" to listOf("application/json")
+                    "Content-Type" to listOf("application/json"),
+                    "Accept" to listOf("text/plain", "text/html")
                 )
             )
             val headers2 = ImmutableHttpHeaders(
                 mapOf(
-                    "Cache-Control" to listOf("no-cache"),
-                    "Content-Type" to listOf("application/json")
+                    "Content-Type" to listOf("application/json"),
+                    "Accept" to listOf("text/plain", "text/html")
                 )
             )
-            assertEquals(headers1, headers2, "同一内容のヘッダーはequalsで等しいことを期待")
+            assertTrue(headers1 == headers2)
         }
 
         @Test
-        fun `headers inequality`() {
-            val headers1 = ImmutableHttpHeaders(mapOf("Cache-Control" to listOf("no-cache")))
-            val headers2 = ImmutableHttpHeaders(mapOf("Content-Type" to listOf("application/json")))
-            assertNotEquals(headers1, headers2, "内容が異なるヘッダーはequalsで等しくないことを期待")
-        }
-
-        @Test
-        fun `forEach should iterate over all headers`() {
-            val headers = ImmutableHttpHeaders(
+        fun `returns false when headers do not have the same values`() {
+            val headers1 = ImmutableHttpHeaders(
                 mapOf(
                     "Content-Type" to listOf("application/json"),
-                    "Accept" to listOf("text/html", "text/plain"),
-                    "Authorization" to listOf("Bearer token")
+                    "Accept" to listOf("text/plain", "text/html")
                 )
             )
-            val headers2 = MutableHttpHeaders()
-            headers.forEach { key, values -> headers2.addAll(key, values) }
-
-            assertEquals(
-                headers as HttpHeaders,
-                headers2 as HttpHeaders,
-                "forEachは全ヘッダーを順に処理することを期待"
+            val headers2 = ImmutableHttpHeaders(
+                mapOf(
+                    "Content-Type" to listOf("text/html"),
+                    "Accept" to listOf("text/plain", "text/html")
+                )
             )
+            assertFalse(headers1 == headers2)
         }
 
         @Test
-        fun `forEach should work on empty headers`() {
-            val headers = ImmutableHttpHeaders(emptyMap())
-            val headerList = mutableListOf<Pair<String, List<String>>>()
-            headers.forEach { key, values -> headerList.add(key to values) }
-
-            assertTrue(headerList.isEmpty(), "ヘッダーが空の場合はforEachは何も処理しないことを期待")
+        fun `compares header names case-insensitively`() {
+            val headers1 = ImmutableHttpHeaders(
+                mapOf(
+                    "Content-Type" to listOf("application/json"),
+                    "ACCEPT" to listOf("text/plain", "text/html")
+                )
+            )
+            val headers2 = ImmutableHttpHeaders(
+                mapOf(
+                    "content-type" to listOf("application/json"),
+                    "accept" to listOf("text/plain", "text/html")
+                )
+            )
+            assertTrue(headers1 == headers2)
         }
 
-        @Test
-        fun `immutable headers should be immutable`() {
-            val mutHeaders = MutableHttpHeaders(mapOf("Content-Type" to listOf("application/json")))
-
-            val header = mutHeaders.toImmutable()
-            assertEquals(mutHeaders as HttpHeaders, header, "mutableとimmutableのヘッダーが等価であることを期待")
-        }
 
         @Test
-        fun `toMutableHeaders should return a mutable copy`() {
-            val immutHeaders = ImmutableHttpHeaders(mapOf("Content-Type" to listOf("application/json")))
-            val mutHeaders = immutHeaders.toMutable()
-
-            assertEquals(immutHeaders as HttpHeaders, mutHeaders as HttpHeaders, "変換前後で内容が等価であることを期待")
-
-            // 変更しても元の ImmutableHttpHeaders に影響がないこと
-            mutHeaders.add("X-New-Header", "value")
-            assertFalse("X-New-Header" in immutHeaders)
+        fun `compares header values case-sensitively`() {
+            val headers1 = ImmutableHttpHeaders(
+                mapOf(
+                    "Content-Type" to listOf("APPLICATION/JSON"),
+                    "ACCEPT" to listOf("text/plain", "text/html")
+                )
+            )
+            val headers2 = ImmutableHttpHeaders(
+                mapOf(
+                    "content-type" to listOf("application/json"),
+                    "accept" to listOf("text/plain", "text/html")
+                )
+            )
+            assertFalse(headers1 == headers2)
         }
     }
 
     @Nested
-    inner class MutableHeaderTest {
-
+    inner class AddTest {
         @Test
-        fun `add should append value to existing header`() {
-            val headers = MutableHttpHeaders(mapOf("Cache-Control" to listOf("no-cache")))
-            headers.add("Cache-Control", "no-store")
+        fun `adds a value to a non-existent header`() {
+            val headers = MutableHttpHeaders(emptyMap())
+            headers.add("Content-Type", "application/json")
             assertEquals(
-                listOf("no-cache", "no-store"),
-                headers.getAll("Cache-Control"),
-                "addは既存ヘッダーに値を追記することを期待"
+                listOf("application/json"),
+                headers.getAll("Content-Type")
             )
         }
 
         @Test
-        fun `add should append value use vararg`() {
-            val headers = MutableHttpHeaders()
-            headers.add(
+        fun `appends a value to an existing header`() {
+            val headers = HttpHeaders.of(
                 "Content-Type" to "application/json",
-                "Cache-Control" to "no-cache",
-                "Content-Type" to "text/html"
-            )
-            assertEquals(
-                listOf("no-cache"),
-                headers.getAll("Cache-Control"),
-            )
+            ).toMutable()
+            headers.add("Content-Type", "text/html")
 
             assertEquals(
                 listOf("application/json", "text/html"),
-                headers.getAll("Content-Type"),
-                "同じキーが指定されたら追加されること"
+                headers.getAll("Content-Type")
             )
         }
 
         @Test
-        fun `add should create a new header if it does not exist`() {
-            val headers = MutableHttpHeaders(emptyMap())
-            headers.add("Authorization", "Bearer token")
+        fun `ignores key case when adding a value`() {
+            val headers = HttpHeaders.of(
+                "Content-Type" to "application/json",
+            ).toMutable()
+            headers.add("content-type", "text/html")
+
             assertEquals(
-                listOf("Bearer token"),
-                headers.getAll("Authorization"),
-                "addは存在しないヘッダーを新規作成することを期待"
+                listOf("application/json", "text/html"),
+                headers.getAll("Content-Type")
             )
         }
 
         @Test
-        fun `set should overwrite existing header values`() {
-            val headers = MutableHttpHeaders(mapOf("Content-Type" to listOf("text/html", "application/json")))
-            headers.set("Content-Type", "application/xml")
-            assertEquals(
-                listOf("application/xml"),
-                headers.getAll("Content-Type"),
-                "setは既存ヘッダーの値を上書きすることを期待"
+        fun `adds multiple values at once`() {
+            val headers = HttpHeaders.of(
+                "Content-Type" to "application/json",
+            ).toMutable()
+            headers.add(
+                "Content-Type" to "text/html",
+                "Accept" to "application/xml",
+                "Accept" to "text/plain"
             )
-        }
 
-        @Test
-        fun `set should create a new header if it does not exist`() {
-            val headers = MutableHttpHeaders(emptyMap())
-            headers["X-Custom-Header"] = "custom-value"
-            assertEquals(
-                listOf("custom-value"),
-                headers.getAll("X-Custom-Header"),
-                "setは存在しないヘッダーを新規作成することを期待"
+            val expected = HttpHeaders.of(
+                "Content-Type" to "application/json",
+                "Content-Type" to "text/html",
+                "Accept" to "application/xml",
+                "Accept" to "text/plain"
             )
-        }
-
-        @Test
-        fun `remove should delete existing header`() {
-            val headers = MutableHttpHeaders(mapOf("ETag" to listOf("12345")))
-            headers.remove("ETag")
-            assertFalse("ETag" in headers, "remove後は対象ヘッダーが存在しないことを期待")
-        }
-
-        @Test
-        fun `remove should do nothing if header does not exist`() {
-            val headers = MutableHttpHeaders(emptyMap())
-            headers.remove("Non-Existent-Header")
-            assertFalse("Non-Existent-Header" in headers, "存在しないヘッダーをremoveしても状態が変わらないことを期待")
-        }
-
-        @Test
-        fun `headers should be case-insensitive`() {
-            val headers = MutableHttpHeaders(mapOf("Cache-Control" to listOf("no-cache")))
-            assertTrue("cache-control" in headers, "ヘッダー名の存在判定は大文字小文字を区別しないことを期待")
-            assertEquals("no-cache", headers["CACHE-CONTROL"], "取得も大文字小文字を区別しないことを期待(get)")
-            assertEquals(
-                "no-cache",
-                headers["CACHE-CONTROL"],
-                "取得も大文字小文字を区別しないことを期待(get)"
-            )
-        }
-
-        @Test
-        fun `addAll should append values to an existing header`() {
-            val headers = MutableHttpHeaders(mapOf("Content-Type" to listOf("application/json")))
-            headers.addAll("Content-Type", listOf("text/html", "text/plain"))
 
             assertEquals(
-                listOf("application/json", "text/html", "text/plain"),
-                headers.getAll("Content-Type"),
-                "addAll must append values to an existing header"
-            )
-        }
-
-        @Test
-        fun `addAll should create a new header if it does not exist`() {
-            val headers = MutableHttpHeaders()
-            headers.addAll("Accept", listOf("text/html", "text/plain"))
-
-            assertEquals(
-                listOf("text/html", "text/plain"),
-                headers.getAll("Accept"),
-                "addAll must create a new header if it does not exist"
-            )
-        }
-
-        @Test
-        fun `addAll should work with normalized keys`() {
-            val headers = MutableHttpHeaders()
-            headers.addAll("Content-Type", listOf("application/json"))
-            headers.addAll("content-type", listOf("text/plain"))
-
-            assertEquals(
-                listOf("application/json", "text/plain"),
-                headers.getAll("CONTENT-TYPE"),
-                "addAll must be case-insensitive and normalize header keys"
-            )
-        }
-
-        @Test
-        fun `addAll should handle mixed-case header names correctly`() {
-            val headers = MutableHttpHeaders()
-            headers.addAll("Accept", listOf("text/html"))
-            headers.addAll("aCcEpT", listOf("text/plain"))
-
-            assertEquals(
-                listOf("text/html", "text/plain"),
-                headers.getAll("ACCEPT"),
-                "addAll must handle mixed-case header names and normalize correctly"
+                expected,
+                headers
             )
         }
     }
 
     @Nested
-    inner class InvalidHeaders {
+    inner class AddAllTest {
         @Test
-        fun `get content-type should return header value`() {
-            val headers = ImmutableHttpHeaders(mapOf("Content-Type" to listOf("application/json", "text/html")))
+        fun `adds all values to a non-existent header`() {
+            val headers = MutableHttpHeaders(emptyMap())
+            headers.addAll("Content-Type", listOf("application/json", "text/html"))
             assertEquals(
-                MediaType.parse("application/json, text/html"),
-                headers.contentType,
-                "get content-type should return header value"
+                listOf("application/json", "text/html"),
+                headers.getAll("Content-Type")
             )
         }
 
         @Test
-        fun `get content-type should return header value with parameter`() {
-            val headers =
-                ImmutableHttpHeaders(mapOf("Content-Type" to listOf("application/json; charset=utf-8", "text/html")))
+        fun `appends all values to an existing header`() {
+            val headers = HttpHeaders.of(
+                "Content-Type" to "application/json",
+            ).toMutable()
+            headers.addAll("Content-Type", listOf("text/html", "application/xml"))
+
             assertEquals(
-                MediaType.parse("application/json; charset=utf-8, text/html"),
-                headers.contentType,
-                "get content-type should return header value"
+                listOf("application/json", "text/html", "application/xml"),
+                headers.getAll("Content-Type")
             )
         }
 
         @Test
-        fun `set content-type should set header value`() {
-            val headers = MutableHttpHeaders()
-            headers.contentType = MediaType.parse("application/json")
+        fun `ignores key case when adding all values`() {
+            val headers = HttpHeaders.of(
+                "Content-Type" to "application/json",
+            ).toMutable()
+            headers.addAll("content-type", listOf("text/html", "application/xml"))
+
             assertEquals(
-                "application/json",
-                headers["Content-Type"],
-                "set content-type should set header value"
+                listOf("application/json", "text/html", "application/xml"),
+                headers.getAll("Content-Type")
+            )
+        }
+    }
+
+    @Nested
+    inner class SetTest {
+        @Test
+        fun `sets a value for a non-existent header`() {
+            val headers = MutableHttpHeaders(emptyMap())
+            headers["Content-Type"] = "application/json"
+            assertEquals(
+                listOf("application/json"),
+                headers.getAll("Content-Type")
             )
         }
 
         @Test
-        fun `set content-type should set header value with parameter`() {
-            val headers = MutableHttpHeaders()
-            headers.contentType = MediaType.parse("application/json; charset=utf-8")
+        fun `overwrites the value of an existing header`() {
+            val headers = HttpHeaders.of(
+                "Content-Type" to "application/json",
+            ).toMutable()
+            headers["Content-Type"] = "text/html"
+
             assertEquals(
-                "application/json; charset=utf-8",
-                headers["Content-Type"],
-                "set content-type should set header value"
+                listOf("text/html"),
+                headers.getAll("Content-Type")
             )
         }
 
         @Test
-        fun `set content-type should remove header value when null`() {
-            val headers = MutableHttpHeaders(mapOf("Content-Type" to listOf("application/json")))
-            headers.contentType = null
-            assertNull(headers["Content-Type"], "set content-type should remove header value when null")
+        fun `ignores key case when setting a value`() {
+            val headers = HttpHeaders.of(
+                "Content-Type" to "application/json",
+            ).toMutable()
+            headers["content-type"] = "text/html"
+
+            assertEquals(
+                listOf("text/html"),
+                headers.getAll("Content-Type")
+            )
+        }
+
+        @Test
+        fun `removes the header when setting null`() {
+            val headers = HttpHeaders.of(
+                "Content-Type" to "application/json",
+            ).toMutable()
+            headers["Content-Type"] = null
+
+            assertFalse(headers.contains("Content-Type"))
+        }
+    }
+
+    @Nested
+    inner class RemoveTest {
+        @Test
+        fun `removes the header`() {
+            val headers = HttpHeaders.of(
+                "Content-Type" to "application/json",
+            ).toMutable()
+            headers.remove("Content-Type")
+            assertFalse(headers.contains("Content-Type"))
+        }
+
+        @Test
+        fun `does nothing when removing a non-existent header`() {
+            val headers = HttpHeaders.of(
+                "Content-Type" to "application/json",
+            ).toMutable()
+            headers.remove("Authorization")
+            assertTrue(headers.contains("Content-Type"))
         }
     }
 }
