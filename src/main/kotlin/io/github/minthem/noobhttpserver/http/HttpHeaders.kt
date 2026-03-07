@@ -6,12 +6,13 @@ sealed class HttpHeaders {
     protected abstract val values: Map<String, List<String>>
 
     operator fun get(key: String): String? {
-        val list = values[key.lowercase()] ?: return null
-        if (list.isEmpty()) return null
-        return list.joinToString(", ")
+        val list = this.getAll(key)
+        return list.firstOrNull()
     }
 
     fun getAll(key: String): List<String> = values[key.lowercase()] ?: emptyList()
+
+    fun getJoined(key: String): String? = getAll(key).ifEmpty { null }?.joinToString(", ")
 
     operator fun contains(key: String): Boolean = values.containsKey(key.lowercase())
 
