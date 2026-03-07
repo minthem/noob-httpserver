@@ -36,23 +36,15 @@ internal class MultipartBodyParser(
         if (!headers.contains("Content-Disposition")) {
             throw IllegalArgumentException("Multipart body must contain a Content-Disposition header")
         }
-        // TODO content-disposition の専用クラス作ってもいいかも
-        val disposition = headers.getFirst("Content-Disposition")
+
+        val disposition = headers.contentDisposition
             ?: throw IllegalArgumentException("Invalid Content-Disposition header")
-        val parameters = disposition
-            .split(";")
-            .map { it.trim() }
-            .filter { it.isNotEmpty() }
-            .filter { it.contains("=") }
-            .associate { it.split("=", limit = 2).let { (k, v) -> k to v.removeSurrounding("\"") } }
 
         // TODO Pair戻しがブサイク, いずれ直す
         val (bodyStream, path) = outputPartBody()
 
-        // TODO これ %encしないとだめかも
-        // TODO filename*のデコードが失敗したらfilenameを使用するように変更する
-        val filename = parameters["filename*"] ?: parameters["filename"]
-        val name = parameters["name"] ?: throw IllegalArgumentException("Invalid Content-Disposition header")
+        val filename = disposition.filename
+        val name = disposition.name ?: throw IllegalArgumentException("Invalid Content-Disposition header")
         val charset = headers.contentType?.charset ?: Charsets.UTF_8
 
         return if (filename == null) {

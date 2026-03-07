@@ -1,7 +1,6 @@
 package io.github.minthem.noobhttpserver.http
 
 import org.junit.jupiter.api.Nested
-import org.junit.jupiter.api.assertThrows
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -16,25 +15,29 @@ class HttpHeadersTest {
         @Test
         fun `getFirst should return first header value when present`() {
             val headers = ImmutableHttpHeaders(mapOf("Content-Type" to listOf("application/json", "text/html")))
-            val result = headers.getFirst("Content-Type")
-            assertEquals("application/json", result, "同名ヘッダーが複数ある場合は先頭要素が返ることを期待")
+            val result = headers["Content-Type"]
+            assertEquals(
+                "application/json, text/html",
+                result,
+                "同名ヘッダーが複数ある場合は結合された値が返ることを期待"
+            )
         }
 
         @Test
         fun `getFirst should return null when header does not exist`() {
             val headers = ImmutableHttpHeaders(emptyMap())
-            val result = headers.getFirst("Authorization")
+            val result = headers["Authorization"]
             assertNull(result, "存在しないヘッダーのgetFirstはnullを返すことを期待")
         }
 
         @Test
         fun `get should return list of header values when present`() {
             val headers = ImmutableHttpHeaders(mapOf("Accept" to listOf("text/plain", "text/html")))
-            val result = headers["Accept"]
+            val result = headers.getAll("Accept")
             assertEquals(
                 listOf("text/plain", "text/html"),
                 result,
-                "get(インデクサ)はヘッダー値のリストを返すことを期待"
+                "getAllはヘッダー値のリストを返すことを期待"
             )
         }
 
@@ -56,7 +59,6 @@ class HttpHeadersTest {
             val headers = ImmutableHttpHeaders(emptyMap())
             assertFalse("Authorization" in headers, "存在しないヘッダー名はcontainsでfalseになることを期待")
         }
-
 
         @Test
         fun `headers equality`() {
@@ -140,7 +142,7 @@ class HttpHeadersTest {
             headers.add("Cache-Control", "no-store")
             assertEquals(
                 listOf("no-cache", "no-store"),
-                headers["Cache-Control"],
+                headers.getAll("Cache-Control"),
                 "addは既存ヘッダーに値を追記することを期待"
             )
         }
@@ -155,12 +157,12 @@ class HttpHeadersTest {
             )
             assertEquals(
                 listOf("no-cache"),
-                headers["Cache-Control"],
+                headers.getAll("Cache-Control"),
             )
 
             assertEquals(
                 listOf("application/json", "text/html"),
-                headers["Content-Type"],
+                headers.getAll("Content-Type"),
                 "同じキーが指定されたら追加されること"
             )
         }
@@ -171,7 +173,7 @@ class HttpHeadersTest {
             headers.add("Authorization", "Bearer token")
             assertEquals(
                 listOf("Bearer token"),
-                headers["Authorization"],
+                headers.getAll("Authorization"),
                 "addは存在しないヘッダーを新規作成することを期待"
             )
         }
@@ -182,7 +184,7 @@ class HttpHeadersTest {
             headers.set("Content-Type", "application/xml")
             assertEquals(
                 listOf("application/xml"),
-                headers["Content-Type"],
+                headers.getAll("Content-Type"),
                 "setは既存ヘッダーの値を上書きすることを期待"
             )
         }
@@ -190,10 +192,10 @@ class HttpHeadersTest {
         @Test
         fun `set should create a new header if it does not exist`() {
             val headers = MutableHttpHeaders(emptyMap())
-            headers.set("X-Custom-Header", "custom-value")
+            headers["X-Custom-Header"] = "custom-value"
             assertEquals(
                 listOf("custom-value"),
-                headers["X-Custom-Header"],
+                headers.getAll("X-Custom-Header"),
                 "setは存在しないヘッダーを新規作成することを期待"
             )
         }
@@ -216,11 +218,11 @@ class HttpHeadersTest {
         fun `headers should be case-insensitive`() {
             val headers = MutableHttpHeaders(mapOf("Cache-Control" to listOf("no-cache")))
             assertTrue("cache-control" in headers, "ヘッダー名の存在判定は大文字小文字を区別しないことを期待")
-            assertEquals(listOf("no-cache"), headers["CACHE-CONTROL"], "取得も大文字小文字を区別しないことを期待(get)")
+            assertEquals("no-cache", headers["CACHE-CONTROL"], "取得も大文字小文字を区別しないことを期待(get)")
             assertEquals(
-                listOf("no-cache")[0],
-                headers.getFirst("CACHE-CONTROL"),
-                "取得も大文字小文字を区別しないことを期待(getFirst)"
+                "no-cache",
+                headers["CACHE-CONTROL"],
+                "取得も大文字小文字を区別しないことを期待(get)"
             )
         }
 
@@ -231,7 +233,7 @@ class HttpHeadersTest {
 
             assertEquals(
                 listOf("application/json", "text/html", "text/plain"),
-                headers["Content-Type"],
+                headers.getAll("Content-Type"),
                 "addAll must append values to an existing header"
             )
         }
@@ -243,7 +245,7 @@ class HttpHeadersTest {
 
             assertEquals(
                 listOf("text/html", "text/plain"),
-                headers["Accept"],
+                headers.getAll("Accept"),
                 "addAll must create a new header if it does not exist"
             )
         }
@@ -256,7 +258,7 @@ class HttpHeadersTest {
 
             assertEquals(
                 listOf("application/json", "text/plain"),
-                headers["CONTENT-TYPE"],
+                headers.getAll("CONTENT-TYPE"),
                 "addAll must be case-insensitive and normalize header keys"
             )
         }
@@ -269,7 +271,7 @@ class HttpHeadersTest {
 
             assertEquals(
                 listOf("text/html", "text/plain"),
-                headers["ACCEPT"],
+                headers.getAll("ACCEPT"),
                 "addAll must handle mixed-case header names and normalize correctly"
             )
         }
@@ -281,16 +283,18 @@ class HttpHeadersTest {
         fun `get content-type should return header value`() {
             val headers = ImmutableHttpHeaders(mapOf("Content-Type" to listOf("application/json", "text/html")))
             assertEquals(
-                MediaType.parse("application/json"),
+                MediaType.parse("application/json, text/html"),
                 headers.contentType,
                 "get content-type should return header value"
             )
         }
+
         @Test
         fun `get content-type should return header value with parameter`() {
-            val headers = ImmutableHttpHeaders(mapOf("Content-Type" to listOf("application/json; charset=utf-8", "text/html")))
+            val headers =
+                ImmutableHttpHeaders(mapOf("Content-Type" to listOf("application/json; charset=utf-8", "text/html")))
             assertEquals(
-                MediaType.parse("application/json; charset=utf-8"),
+                MediaType.parse("application/json; charset=utf-8, text/html"),
                 headers.contentType,
                 "get content-type should return header value"
             )
@@ -301,7 +305,7 @@ class HttpHeadersTest {
             val headers = MutableHttpHeaders()
             headers.contentType = MediaType.parse("application/json")
             assertEquals(
-                listOf("application/json"),
+                "application/json",
                 headers["Content-Type"],
                 "set content-type should set header value"
             )
@@ -312,7 +316,7 @@ class HttpHeadersTest {
             val headers = MutableHttpHeaders()
             headers.contentType = MediaType.parse("application/json; charset=utf-8")
             assertEquals(
-                listOf("application/json; charset=utf-8"),
+                "application/json; charset=utf-8",
                 headers["Content-Type"],
                 "set content-type should set header value"
             )

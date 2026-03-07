@@ -29,17 +29,17 @@ data class MediaType private constructor(
     }
 
     companion object {
-        fun parse(contentType: String): MediaType {
-            val parts = contentType.split(";").map { it.trim() }
-            val fullType = parts[0].split("/")
+        fun parse(value: String): MediaType {
+            return fromHeaderValue(HeaderValueParser.parseSingle(value))
+        }
+
+        fun fromHeaderValue(headerValue: HeaderValue): MediaType {
+            val fullType = headerValue.value.split("/", limit = 2)
 
             val type = fullType.getOrElse(0) { "*" }.lowercase()
             val subtype = fullType.getOrElse(1) { "*" }.lowercase()
 
-            val parameters = parts.drop(1).associate {
-                val pair = it.split("=")
-                pair[0].lowercase() to pair.getOrElse(1) { "" }.trim('"')
-            }
+            val parameters = headerValue.parameters.mapValues { (_, v) -> v ?: "" }
 
             return MediaType(type, subtype, parameters)
         }

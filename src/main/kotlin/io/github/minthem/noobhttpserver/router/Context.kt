@@ -4,6 +4,7 @@ import io.github.minthem.noobhttpserver.http.HttpHeaders
 import io.github.minthem.noobhttpserver.http.HttpRequest
 import io.github.minthem.noobhttpserver.http.MediaType
 import io.github.minthem.noobhttpserver.http.MultipartBody
+import io.github.minthem.noobhttpserver.http.contentType
 import java.io.Closeable
 import java.io.InputStream
 
