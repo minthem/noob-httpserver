@@ -129,6 +129,95 @@ class HttpResponseTest {
     }
 
     @Test
+    fun `should allow setting body from string chunk`() {
+        // Arrange
+        val bodySeq = sequenceOf(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 94)
+            .map { "c".repeat(it) }
+            .asCloseable { }
+
+        // Act
+        val response = HttpResponse.build {
+            body(bodySeq)
+        }
+
+        // Assert
+        assertTrue(response.body is ChunkedBodyExecutor)
+        val bStream = ByteArrayOutputStream()
+        response.body.writeTo(Channels.newChannel(bStream))
+
+        val expected = listOf(
+            "1", "c",
+            "2", "cc",
+            "3", "ccc",
+            "4", "cccc",
+            "5", "ccccc",
+            "6", "cccccc",
+            "7", "ccccccc",
+            "8", "cccccccc",
+            "9", "ccccccccc",
+            "a", "cccccccccc",
+            "b", "ccccccccccc",
+            "c", "cccccccccccc",
+            "d", "ccccccccccccc",
+            "e", "cccccccccccccc",
+            "f", "ccccccccccccccc",
+            "10", "cccccccccccccccc",
+            "11", "ccccccccccccccccc",
+            "5e", "c".repeat(94),
+            "0", ""
+        ).joinToString("\r\n") + "\r\n"
+        val actual = String(bStream.toByteArray())
+        assertEquals(expected, actual)
+
+        assertEquals("application/octet-stream", response.body.defaultContentType().toString())
+    }
+
+    @Test
+    fun `should allow setting body from byte array chunk`() {
+        // Arrange
+        val bodySeq = sequenceOf(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 94)
+            .map { "c".repeat(it).toByteArray(StandardCharsets.UTF_8) }
+            .asCloseable { }
+
+        // Act
+        val response = HttpResponse.build {
+            body(bodySeq)
+        }
+
+        // Assert
+        assertTrue(response.body is ChunkedBodyExecutor)
+        val bStream = ByteArrayOutputStream()
+        response.body.writeTo(Channels.newChannel(bStream))
+
+        val expected = (listOf(
+            "1", "c",
+            "2", "cc",
+            "3", "ccc",
+            "4", "cccc",
+            "5", "ccccc",
+            "6", "cccccc",
+            "7", "ccccccc",
+            "8", "cccccccc",
+            "9", "ccccccccc",
+            "a", "cccccccccc",
+            "b", "ccccccccccc",
+            "c", "cccccccccccc",
+            "d", "ccccccccccccc",
+            "e", "cccccccccccccc",
+            "f", "ccccccccccccccc",
+            "10", "cccccccccccccccc",
+            "11", "ccccccccccccccccc",
+            "5e", "c".repeat(94),
+            "0", ""
+        ).joinToString("\r\n") + "\r\n").toByteArray(StandardCharsets.UTF_8)
+
+        val actual = bStream.toByteArray()
+        assertContentEquals(expected, actual)
+
+        assertEquals("application/octet-stream", response.body.defaultContentType().toString())
+    }
+
+    @Test
     fun `should throw build response from file not found`() {
         // Arrange
         val nonExist = Path.of("non-existent-file.txt")
