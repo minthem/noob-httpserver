@@ -218,6 +218,37 @@ class HttpResponseTest {
     }
 
     @Test
+    fun `should apply headers when set`() {
+        // Act
+        val response = HttpResponse.build {
+            header("Content-Type" to "text/html", "X-Custom-Header" to "Custom Value")
+            header("X-Custom-Header" to "Second Value")
+            header(
+                HttpHeaders.of(
+                    "X-Custom-Header" to "Third Value",
+                    "Vary" to "*"
+                )
+            )
+            body("<h1>Hello, World!</h1>")
+        }
+
+        val expectedHeaders = HttpHeaders.of(
+            mapOf(
+                "Content-Type" to listOf("text/html"),
+                "X-Custom-Header" to listOf("Custom Value", "Second Value", "Third Value"),
+                "Vary" to listOf("*"),
+                "Content-Length" to listOf("22")
+            ),
+        )
+
+        // Assert
+        assertEquals(HttpStatus.OK, response.status)
+        assertEquals(expectedHeaders, response.headers)
+        assertTrue(response.body is TextBodyExecutor)
+
+    }
+
+    @Test
     fun `should throw build response from file not found`() {
         // Arrange
         val nonExist = Path.of("non-existent-file.txt")
@@ -248,16 +279,5 @@ class HttpResponseTest {
 
         // Cleanup
         Files.deleteIfExists(tempFile)
-    }
-
-    @Test
-    fun `should allow creating an HttpResponse with ok status`() {
-        // Act
-        val response = HttpResponse.build {}
-
-        // Assert
-        assertEquals(HttpStatus.OK, response.status)
-        assertTrue(response.headers is MutableHttpHeaders)
-        assertNotNull(response.headers)
     }
 }
