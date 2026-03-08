@@ -16,7 +16,15 @@ var MutableHttpHeaders.contentType: MediaType?
 
 
 private fun parseContentLength(headers: HttpHeaders): Long? {
-    return headers["Content-Length"]?.toLong()
+    val values = headers.getAll("Content-Length")
+    if (values.isEmpty()) return null
+    require(values.size == 1) { "Multiple Content-Length headers are not allowed" }
+
+    val value = values.single().toLongOrNull()
+        ?: throw IllegalArgumentException("Invalid Content-Length")
+
+    require(value >= 0) { "Content-Length must be greater than or equal to 0" }
+    return value
 }
 
 val HttpHeaders.contentLength: Long?
@@ -25,9 +33,9 @@ val HttpHeaders.contentLength: Long?
 var MutableHttpHeaders.contentLength: Long?
     get() = parseContentLength(this)
     set(value) {
+        require(value == null || value >= 0) { "Content-Length must be greater than or equal to 0" }
         this["Content-Length"] = value?.toString()
     }
-
 
 private fun parseContentDisposition(headers: HttpHeaders): ContentDisposition? {
     return headers["Content-Disposition"]?.let { ContentDisposition.parse(it) }
