@@ -17,6 +17,8 @@ internal class RequestTargetTest {
 
         assertEquals("/valid/path", requestTarget.rawPath)
         assertNull(requestTarget.rawQuery)
+        assertEquals("/valid/path", requestTarget.decodedPath)
+        assertEquals(emptyMap(), requestTarget.decodedQuery)
     }
 
     @Test
@@ -26,6 +28,14 @@ internal class RequestTargetTest {
 
         assertEquals("/valid/path", requestTarget.rawPath)
         assertEquals("param1=value1&param2=value2", requestTarget.rawQuery)
+        assertEquals("/valid/path", requestTarget.decodedPath)
+        assertEquals(
+            mapOf(
+                "param1" to listOf("value1"),
+                "param2" to listOf("value2")
+            ),
+            requestTarget.decodedQuery
+        )
     }
 
     @Test
@@ -35,6 +45,8 @@ internal class RequestTargetTest {
 
         assertEquals("/", requestTarget.rawPath)
         assertNull(requestTarget.rawQuery)
+        assertEquals("/", requestTarget.decodedPath)
+        assertEquals(emptyMap(), requestTarget.decodedQuery)
     }
 
     @Test
@@ -44,6 +56,8 @@ internal class RequestTargetTest {
 
         assertEquals("/some/%20path", requestTarget.rawPath)
         assertNull(requestTarget.rawQuery)
+        assertEquals("/some/ path", requestTarget.decodedPath)
+        assertEquals(emptyMap(), requestTarget.decodedQuery)
     }
 
     @Test
@@ -53,6 +67,15 @@ internal class RequestTargetTest {
 
         assertEquals("/path", requestTarget.rawPath)
         assertEquals("param1=value1&param2=value2!$&'()*+,;=", requestTarget.rawQuery)
+        assertEquals("/path", requestTarget.decodedPath)
+        assertEquals(
+            mapOf(
+                "param1" to listOf("value1"),
+                "param2" to listOf("value2!$"),
+                "'()*+,;" to listOf("")
+            ),
+            requestTarget.decodedQuery
+        )
     }
 
     @Test
@@ -62,6 +85,13 @@ internal class RequestTargetTest {
 
         assertEquals("/path", requestTarget.rawPath)
         assertEquals("first=1?second=2", requestTarget.rawQuery)
+        assertEquals("/path", requestTarget.decodedPath)
+        assertEquals(
+            mapOf(
+                "first" to listOf("1?second=2"),
+            ),
+            requestTarget.decodedQuery
+        )
     }
 
     @Test
@@ -71,5 +101,88 @@ internal class RequestTargetTest {
 
         assertEquals("/valid/path/", requestTarget.rawPath)
         assertNull(requestTarget.rawQuery)
+        assertEquals("/valid/path/", requestTarget.decodedPath)
+        assertEquals(emptyMap(), requestTarget.decodedQuery)
+    }
+
+    @Test
+    fun `decodedPath should decode percent encoded path`() {
+        val requestTarget = RequestTarget("/users/%E3%81%82/profile")
+
+        assertEquals("/users/%E3%81%82/profile", requestTarget.rawPath)
+        assertEquals("/users/あ/profile", requestTarget.decodedPath)
+    }
+
+    @Test
+    fun `decodedQuery should return empty map when query is empty`() {
+        val requestTarget = RequestTarget("/path?")
+
+        assertEquals(emptyMap(), requestTarget.decodedQuery)
+    }
+
+    @Test
+    fun `decodedQuery should group multiple values for same key`() {
+        val requestTarget = RequestTarget("/path?a=1&a=2&a=3")
+
+        assertEquals(
+            mapOf("a" to listOf("1", "2", "3")),
+            requestTarget.decodedQuery
+        )
+    }
+
+    @Test
+    fun `decodedQuery should treat key without value as empty string`() {
+        val requestTarget = RequestTarget("/path?a")
+
+        assertEquals(
+            mapOf("a" to listOf("")),
+            requestTarget.decodedQuery
+        )
+    }
+
+    @Test
+    fun `decodedQuery should treat explicit empty value as empty string`() {
+        val requestTarget = RequestTarget("/path?a=")
+
+        assertEquals(
+            mapOf("a" to listOf("")),
+            requestTarget.decodedQuery
+        )
+    }
+
+    @Test
+    fun `decodedQuery should decode percent encoded keys and values`() {
+        val requestTarget = RequestTarget("/path?na%6De=%E3%81%82&q=http%20server")
+
+        assertEquals(
+            mapOf(
+                "name" to listOf("あ"),
+                "q" to listOf("http server")
+            ),
+            requestTarget.decodedQuery
+        )
+    }
+
+    @Test
+    fun `decodedQuery should ignore blank query segments`() {
+        val requestTarget = RequestTarget("/path?a=1&&b=2&")
+
+        assertEquals(
+            mapOf(
+                "a" to listOf("1"),
+                "b" to listOf("2")
+            ),
+            requestTarget.decodedQuery
+        )
+    }
+
+    @Test
+    fun `decodedQuery should allow empty key`() {
+        val requestTarget = RequestTarget("/path?=value")
+
+        assertEquals(
+            mapOf("" to listOf("value")),
+            requestTarget.decodedQuery
+        )
     }
 }
