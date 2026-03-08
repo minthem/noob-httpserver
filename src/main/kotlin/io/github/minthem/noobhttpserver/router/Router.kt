@@ -42,7 +42,7 @@ class Router(init: Router.() -> Unit) {
                     accumulator.considerMatch(
                         handler = matchResult.handler,
                         pathParams = matchResult.pathParams,
-                        score = matchResult.score
+                        score = matchResult.specificity
                     )
                 }
 

@@ -25,7 +25,7 @@ internal class RouteGroup(
             when (val matchResult = route.match(subReq)) {
                 is RouteMatchResult.Match -> {
                     val mergedPathParams = groupMatchResult.pathParams + matchResult.pathParams
-                    val mergedScore = pathPattern.score.append(matchResult.score)
+                    val mergedScore = pathPattern.specificity.append(matchResult.specificity)
                     accumulator.considerMatch(
                         handler = matchResult.handler,
                         pathParams = mergedPathParams,
@@ -59,7 +59,7 @@ internal class Route(
                     RouteMatchResult.Match(
                         handler = handler,
                         pathParams = pathMatchResult.pathParams,
-                        score = pathPattern.score
+                        specificity = pathPattern.specificity
                     )
                 }
             }
@@ -73,7 +73,7 @@ internal sealed interface RouteMatchResult {
     class Match(
         val handler: Handler,
         val pathParams: Map<String, String>,
-        val score: PathScore
+        val specificity: PathSpecificity
     ) : RouteMatchResult
 
     class MethodNotMatch(

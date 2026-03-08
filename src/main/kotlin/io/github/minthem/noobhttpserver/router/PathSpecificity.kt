@@ -5,10 +5,10 @@ internal enum class SegmentKind(val weight: Int) {
     PARAM(1), ;
 }
 
-internal data class PathScore(
+internal data class PathSpecificity(
     val segments: List<SegmentKind>
-) : Comparable<PathScore> {
-    override fun compareTo(other: PathScore): Int {
+) : Comparable<PathSpecificity> {
+    override fun compareTo(other: PathSpecificity): Int {
         // 固定文字列がより早い位置に来たやつを優先
         for ((self, otherSegment) in segments.zip(other.segments)) {
             if (self == otherSegment) continue
@@ -28,17 +28,17 @@ internal data class PathScore(
         return 0
     }
 
-    fun append(other: PathScore): PathScore = PathScore(segments + other.segments)
+    fun append(other: PathSpecificity): PathSpecificity = PathSpecificity(segments + other.segments)
 
     private fun countStatic(): Int = segments.count { it == SegmentKind.STATIC }
     private fun countParam(): Int = segments.count { it == SegmentKind.PARAM }
 
     companion object {
-        fun fromPattern(path: String): PathScore {
+        fun fromPattern(path: String): PathSpecificity {
             val segments = path.split('/').filter { it.isNotBlank() }.map {
                 if (it.startsWith("{") && it.endsWith("}")) SegmentKind.PARAM else SegmentKind.STATIC
             }
-            return PathScore(segments)
+            return PathSpecificity(segments)
         }
     }
 }

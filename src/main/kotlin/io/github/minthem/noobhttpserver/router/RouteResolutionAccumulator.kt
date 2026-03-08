@@ -7,13 +7,13 @@ internal class RouteResolutionAccumulator {
     private data class Candidate(
         val handler: Handler,
         val pathParams: Map<String, String>,
-        val score: PathScore
+        val score: PathSpecificity
     )
 
     private var bestCandidate: Candidate? = null
     private val allowedMethods = linkedSetOf<HttpMethod>()
 
-    fun considerMatch(handler: Handler, pathParams: Map<String, String>, score: PathScore) {
+    fun considerMatch(handler: Handler, pathParams: Map<String, String>, score: PathSpecificity) {
         val candidate = Candidate(handler, pathParams, score)
         val currentBest = bestCandidate
 

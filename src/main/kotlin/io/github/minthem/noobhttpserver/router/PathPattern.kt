@@ -19,7 +19,7 @@ internal class PathPattern private constructor(
     private val patternRegex: Regex,
     private val paramNames: List<String>,
     private val isPrefix: Boolean,
-    internal val score: PathScore
+    internal val specificity: PathSpecificity
 ) {
 
     fun match(target: RequestTarget): PathPatternMatchResult {
@@ -83,7 +83,7 @@ internal class PathPattern private constructor(
                 patternRegex = sb.toString().toRegex(),
                 paramNames = paramNames,
                 isPrefix = isPrefix,
-                score = PathScore.fromPattern(pattern)
+                specificity = PathSpecificity.fromPattern(pattern)
             )
         }
 
