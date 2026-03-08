@@ -52,7 +52,7 @@ class HttpResponseTest {
 
         val actual = String(bStream.toByteArray(), charset)
         assertEquals(content, actual)
-        assertEquals("text/plain; charset=UTF-8", response.body.defaultContentType().toString())
+        assertEquals("text/plain; charset=\"UTF-8\"", response.body.defaultContentType().toString())
     }
 
     @Test
@@ -96,7 +96,7 @@ class HttpResponseTest {
 
         val actual = String(bStream.toByteArray())
         assertEquals(content, actual)
-        assertEquals("text/plain; charset=UTF-8", response.body.defaultContentType().toString())
+        assertEquals("text/plain; charset=\"UTF-8\"", response.body.defaultContentType().toString())
 
         // Cleanup
         Files.deleteIfExists(tempFile)
@@ -122,7 +122,7 @@ class HttpResponseTest {
 
         val actual = String(bStream.toByteArray())
         assertEquals(content, actual)
-        assertEquals("text/html; charset=UTF-8", response.body.defaultContentType().toString())
+        assertEquals("text/html; charset=\"UTF-8\"", response.body.defaultContentType().toString())
 
         // Cleanup
         Files.deleteIfExists(tempFile)

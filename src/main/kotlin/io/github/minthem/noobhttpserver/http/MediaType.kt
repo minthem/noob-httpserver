@@ -23,7 +23,7 @@ data class MediaType private constructor(
         return if (parameters.isEmpty()) {
             "$type/$subtype"
         } else {
-            val params = parameters.entries.joinToString("; ") { "${it.key}=${it.value}" }
+            val params = parameters.entries.joinToString("; ") { "${it.key}=\"${it.value}\"" }
             "$type/$subtype; $params"
         }
     }
