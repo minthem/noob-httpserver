@@ -474,4 +474,150 @@ class HttpHeadersTest {
             assertTrue(headers.contains("Content-Type"))
         }
     }
+
+    @Nested
+    inner class FactoryTest {
+        @Test
+        fun `of map should normalize keys and merge values with different cases`() {
+            val headers = HttpHeaders.of(
+                mapOf(
+                    "Content-Type" to listOf("application/json"),
+                    "content-type" to listOf("text/html"),
+                    "ACCEPT" to listOf("text/plain")
+                )
+            )
+
+            assertEquals(listOf("application/json", "text/html"), headers.getAll("Content-Type"))
+            assertEquals(listOf("text/plain"), headers.getAll("accept"))
+        }
+
+        @Test
+        fun `of vararg should preserve insertion order of values for same key`() {
+            val headers = HttpHeaders.of(
+                "Accept" to "application/json",
+                "accept" to "text/html",
+                "ACCEPT" to "text/plain"
+            )
+
+            assertEquals(
+                listOf("application/json", "text/html", "text/plain"),
+                headers.getAll("Accept")
+            )
+        }
+    }
+
+    @Nested
+    inner class ConversionTest {
+        @Test
+        fun `toImmutable should create independent snapshot from mutable headers`() {
+            val mutable = MutableHttpHeaders()
+            mutable.add("Content-Type", "application/json")
+
+            val immutable = mutable.toImmutable()
+            mutable.add("Content-Type", "text/html")
+            mutable["Accept"] = "text/plain"
+
+            assertEquals(listOf("application/json"), immutable.getAll("Content-Type"))
+            assertTrue(immutable.getAll("Accept").isEmpty())
+        }
+
+        @Test
+        fun `toMutable should create independent mutable copy from immutable headers`() {
+            val immutable = HttpHeaders.of(
+                "Content-Type" to "application/json",
+                "Accept" to "text/plain"
+            ).toImmutable()
+
+            val mutable = immutable.toMutable()
+            mutable.add("Content-Type", "text/html")
+            mutable["Accept"] = "application/xml"
+            mutable["Authorization"] = "Bearer token"
+
+            assertEquals(listOf("application/json"), immutable.getAll("Content-Type"))
+            assertEquals(listOf("text/plain"), immutable.getAll("Accept"))
+            assertFalse("Authorization" in immutable)
+        }
+
+        @Test
+        fun `toMutable should return same instance for mutable headers`() {
+            val headers = MutableHttpHeaders()
+            val result = headers.toMutable()
+
+            assertSame(headers, result)
+        }
+
+        @Test
+        fun `toImmutable should return same instance for immutable headers`() {
+            val headers = HttpHeaders.of("Content-Type" to "application/json").toImmutable()
+            val result = headers.toImmutable()
+
+            assertSame(headers, result)
+        }
+    }
+
+    @Nested
+    inner class ForEachTest {
+        @Test
+        fun `forEach should iterate over normalized keys and copied values`() {
+            val headers = HttpHeaders.of(
+                "Content-Type" to "application/json",
+                "content-type" to "text/html",
+                "Accept" to "text/plain"
+            )
+
+            val actual = mutableMapOf<String, List<String>>()
+            headers.forEach { key, values ->
+                actual[key] = values
+            }
+
+            assertEquals(
+                mapOf(
+                    "content-type" to listOf("application/json", "text/html"),
+                    "accept" to listOf("text/plain")
+                ),
+                actual
+            )
+        }
+
+        @Test
+        fun `forEach should provide defensive copy of values`() {
+            val headers = HttpHeaders.of(
+                "Accept" to "application/json",
+                "Accept" to "text/html"
+            )
+
+            headers.forEach { _, values ->
+                if (values is MutableList<String>) {
+                    values.add("application/xml")
+                }
+            }
+
+            assertEquals(
+                listOf("application/json", "text/html"),
+                headers.getAll("Accept")
+            )
+        }
+    }
+
+    @Nested
+    inner class HashCodeTest {
+        @Test
+        fun `returns same hashCode when headers are equal`() {
+            val headers1 = ImmutableHttpHeaders(
+                mapOf(
+                    "Content-Type" to listOf("application/json"),
+                    "ACCEPT" to listOf("text/plain", "text/html")
+                )
+            )
+            val headers2 = ImmutableHttpHeaders(
+                mapOf(
+                    "content-type" to listOf("application/json"),
+                    "accept" to listOf("text/plain", "text/html")
+                )
+            )
+
+            assertEquals(headers1, headers2)
+            assertEquals(headers1.hashCode(), headers2.hashCode())
+        }
+    }
 }
