@@ -18,7 +18,8 @@ internal sealed interface PathPatternMatchResult {
 internal class PathPattern private constructor(
     private val patternRegex: Regex,
     private val paramNames: List<String>,
-    private val isPrefix: Boolean
+    private val isPrefix: Boolean,
+    internal val specificity: PathSpecificity
 ) {
 
     fun match(target: RequestTarget): PathPatternMatchResult {
@@ -29,19 +30,17 @@ internal class PathPattern private constructor(
         } ?: return PathPatternMatchResult.NoMatch
 
         val params = mutableMapOf<String, String>()
-        for (paramName in paramNames) {
-            val value = m.groups[paramName]?.value ?: continue
+        for ((index, paramName) in paramNames.withIndex()) {
+            val value = m.groups[index + 1]?.value ?: continue
             params[paramName] = UriDecoder.decodePath(value)
         }
 
         val remainingPath = if (isPrefix) {
             val remain = target.rawPath.substring(m.range.last + 1)
-            if (remain.isNotEmpty() && remain[0] == '/') {
-                remain
-            } else {
-                "/$remain"
-            }
-        } else null
+            if (remain.isNotEmpty() && remain[0] == '/') remain else "/$remain"
+        } else {
+            null
+        }
 
         return PathPatternMatchResult.Match(params.toMap(), remainingPath)
     }
@@ -58,16 +57,17 @@ internal class PathPattern private constructor(
 
             var lastIndex = 0
             sb.append("^")
+            // マッチ部分を取得
             while (reg.find()) {
+                // 先頭もしくは手前のマッチ部分から次のマッチ部分までを取得(変数部分でないパス)
                 val staticPath = pattern.substring(lastIndex, reg.start())
                 if (staticPath.isNotEmpty()) {
                     sb.append(Pattern.quote(staticPath))
                 }
 
                 val paramName = reg.group(1)
-                sb.append("(?<$paramName>[^/]+)")
+                sb.append("([^/]+)")
                 paramNames.add(paramName)
-
                 lastIndex = reg.end()
             }
 
@@ -79,7 +79,12 @@ internal class PathPattern private constructor(
                 sb.append("/?$")
             }
 
-            return PathPattern(sb.toString().toRegex(), paramNames, isPrefix)
+            return PathPattern(
+                patternRegex = sb.toString().toRegex(),
+                paramNames = paramNames,
+                isPrefix = isPrefix,
+                specificity = PathSpecificity.fromPattern(pattern)
+            )
         }
 
         private fun isValidPathPattern(pattern: String): Boolean {

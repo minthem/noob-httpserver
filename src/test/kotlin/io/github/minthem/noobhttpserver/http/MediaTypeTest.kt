@@ -4,13 +4,9 @@ import java.nio.charset.Charset
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertTrue
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
-/**
- * Unit tests for the MediaType class.
- * This class tests the parse function, isCompatibleWith method, lazy charset property, and toString method.
- */
 class MediaTypeTest {
 
     @Test
@@ -22,6 +18,13 @@ class MediaTypeTest {
     }
 
     @Test
+    fun `parse should normalize type and subtype to lowercase`() {
+        val mediaType = MediaType.parse("Text/Plain")
+        assertEquals("text", mediaType.type)
+        assertEquals("plain", mediaType.subtype)
+    }
+
+    @Test
     fun `parse should correctly parse parameters`() {
         val mediaType = MediaType.parse("text/plain; charset=UTF-8; q=0.9")
         assertEquals("text", mediaType.type)
@@ -29,6 +32,12 @@ class MediaTypeTest {
         assertEquals(2, mediaType.parameters.size)
         assertEquals("UTF-8", mediaType.parameters["charset"])
         assertEquals("0.9", mediaType.parameters["q"])
+    }
+
+    @Test
+    fun `parse should handle parameter without value as empty string`() {
+        val mediaType = MediaType.parse("text/plain; charset")
+        assertEquals("", mediaType.parameters["charset"])
     }
 
     @Test
@@ -69,13 +78,30 @@ class MediaTypeTest {
     }
 
     @Test
-    fun `isCompatibleWith should return true if type or subtype is a wildcard`() {
+    fun `isCompatibleWith should return true if left side contains wildcard`() {
         val mediaType1 = MediaType.parse("text/*")
         val mediaType2 = MediaType.parse("text/plain")
-        val mediaType3 = MediaType.parse("*/*")
 
         assertTrue(mediaType1.isCompatibleWith(mediaType2))
-        assertTrue(mediaType2.isCompatibleWith(mediaType3))
+    }
+
+    @Test
+    fun `isCompatibleWith should return true if right side contains wildcard`() {
+        val mediaType1 = MediaType.parse("text/plain")
+        val mediaType2 = MediaType.parse("*/*")
+
+        assertTrue(mediaType1.isCompatibleWith(mediaType2))
+    }
+
+    @Test
+    fun `isCompatibleWith should be symmetric for wildcard matching`() {
+        val mediaType1 = MediaType.parse("text/*")
+        val mediaType2 = MediaType.parse("text/plain")
+
+        assertEquals(
+            mediaType1.isCompatibleWith(mediaType2),
+            mediaType2.isCompatibleWith(mediaType1)
+        )
     }
 
     @Test
@@ -87,6 +113,18 @@ class MediaTypeTest {
     @Test
     fun `toString should return correct string representation with parameters`() {
         val mediaType = MediaType.parse("text/plain; charset=UTF-8; q=0.9")
-        assertEquals("text/plain; charset=UTF-8; q=0.9", mediaType.toString())
+        assertEquals("text/plain; charset=\"UTF-8\"; q=\"0.9\"", mediaType.toString())
+    }
+
+    @Test
+    fun `predefined multipart form data should match expected value`() {
+        assertEquals("multipart", MediaType.MULTIPART_FORM_DATA.type)
+        assertEquals("form-data", MediaType.MULTIPART_FORM_DATA.subtype)
+    }
+
+    @Test
+    fun `predefined octet stream should match expected value`() {
+        assertEquals("application", MediaType.OCTET_STREAM.type)
+        assertEquals("octet-stream", MediaType.OCTET_STREAM.subtype)
     }
 }

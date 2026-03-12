@@ -2,6 +2,8 @@ package io.github.minthem.noobhttpserver.router
 
 import io.github.minthem.noobhttpserver.http.RequestTarget
 import org.junit.jupiter.api.fail
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -106,13 +108,152 @@ class PathPatternTest {
     }
 
     @Test
-    fun `testInvalidPathPattern should throw exception for invalid patterns`() {
-        assertFailsWith<IllegalArgumentException>("Non slash start") {
-            PathPattern.parse("non-slash-start")
+    fun `testMatch should decode path parameters`() {
+        val pattern = PathPattern.parse("/users/{id}")
+
+        when (val result = pattern.match(RequestTarget("/users/%E3%81%82"))) {
+            is PathPatternMatchResult.Match -> {
+                assertEquals(mapOf("id" to "あ"), result.pathParams)
+            }
+
+            is PathPatternMatchResult.NoMatch -> {
+                fail { "Expected match for /users/%E3%81%82" }
+            }
         }
-        assertFailsWith<IllegalArgumentException>("ブラケットそのまま") { PathPattern.parse("/users/{id}/}") }
-        assertFailsWith<IllegalArgumentException>("不正なパス") { PathPattern.parse("/users/?????}") }
-        assertFailsWith<IllegalArgumentException>("変数名に使用できない文字列") { PathPattern.parse("/users/{+++++++}}") }
-        assertFailsWith<IllegalArgumentException>("セグメント内に複数の変数") { PathPattern.parse("/users/{id}{name}") }
+    }
+
+    @Test
+    fun `testMatch should ignore query string`() {
+        val pattern = PathPattern.parse("/users/{id}")
+
+        when (val result = pattern.match(RequestTarget("/users/42?tab=profile"))) {
+            is PathPatternMatchResult.Match -> {
+                assertEquals(mapOf("id" to "42"), result.pathParams)
+            }
+
+            is PathPatternMatchResult.NoMatch -> {
+                fail { "Expected match for /users/42?tab=profile" }
+            }
+        }
+    }
+
+    @Test
+    fun `testMatch should return true for root path`() {
+        val pattern = PathPattern.parse("/")
+
+        assertTrue(pattern.match(RequestTarget("/")) is PathPatternMatchResult.Match)
+    }
+
+    @Test
+    fun `testMatch should return false for non root path when pattern is root`() {
+        val pattern = PathPattern.parse("/")
+
+        assertTrue(pattern.match(RequestTarget("/users")) is PathPatternMatchResult.NoMatch)
+    }
+
+    @Test
+    fun `testPrefixMatch should return slash as remaining path when matched exactly`() {
+        val pattern = PathPattern.parse("/users/{id}", isPrefix = true)
+
+        when (val result = pattern.match(RequestTarget("/users/42"))) {
+            is PathPatternMatchResult.Match -> {
+                assertEquals(mapOf("id" to "42"), result.pathParams)
+                assertEquals("/", result.remainingPath)
+            }
+
+            is PathPatternMatchResult.NoMatch -> {
+                fail { "Expected prefix match for /users/42" }
+            }
+        }
+    }
+
+    @Test
+    fun `testPrefixMatch should return slash as remaining path when matched with trailing slash`() {
+        val pattern = PathPattern.parse("/users/{id}", isPrefix = true)
+
+        when (val result = pattern.match(RequestTarget("/users/42/"))) {
+            is PathPatternMatchResult.Match -> {
+                assertEquals(mapOf("id" to "42"), result.pathParams)
+                assertEquals("/", result.remainingPath)
+            }
+
+            is PathPatternMatchResult.NoMatch -> {
+                fail { "Expected prefix match for /users/42/" }
+            }
+        }
+    }
+
+    @Test
+    fun `testPrefixMatch should return slash as remaining path when matched with remaining path`() {
+        val pattern = PathPattern.parse("/users/{id}", isPrefix = true)
+
+        when (val result = pattern.match(RequestTarget("/users/42/orders"))) {
+            is PathPatternMatchResult.Match -> {
+                assertEquals(mapOf("id" to "42"), result.pathParams)
+                assertEquals("/orders", result.remainingPath)
+            }
+
+            is PathPatternMatchResult.NoMatch -> {
+                fail { "Expected prefix match for /users/42/" }
+            }
+        }
+    }
+
+    @Test
+    fun `testPrefixMatch should not match from middle of path`() {
+        val pattern = PathPattern.parse("/users", isPrefix = true)
+
+        assertTrue(pattern.match(RequestTarget("/api/users/42")) is PathPatternMatchResult.NoMatch)
+    }
+
+    @Test
+    fun `testMatch should return true for multiple path parameters in separate segments`() {
+        val pattern = PathPattern.parse("/{id}/{name}")
+
+        when (val result = pattern.match(RequestTarget("/42/minthem"))) {
+            is PathPatternMatchResult.Match -> {
+                assertEquals(mapOf("id" to "42", "name" to "minthem"), result.pathParams)
+            }
+
+            is PathPatternMatchResult.NoMatch -> {
+                fail { "Expected match for /42/minthem" }
+            }
+        }
+    }
+
+    @Test
+    fun `testMatch should allow underscore in parameter name`() {
+        val pattern = PathPattern.parse("/users/{user_id}")
+
+        when (val result = pattern.match(RequestTarget("/users/42"))) {
+            is PathPatternMatchResult.Match -> {
+                assertEquals(mapOf("user_id" to "42"), result.pathParams)
+            }
+
+            is PathPatternMatchResult.NoMatch -> {
+                fail { "Expected match for /users/42" }
+            }
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(
+        strings = [
+            "",
+            "non-slash-start",
+            "/users/{}",
+            "/users/{id",
+            "/users/id}",
+            "/users/foo{id}",
+            "/users/{id}bar",
+            "/users/{id-name}",
+            "/users/{id}{name}",
+            "/users/{+++++++}}"
+        ]
+    )
+    fun `testInvalidPathPattern should throw exception for more invalid patterns`(pattern: String) {
+        assertFailsWith<IllegalArgumentException> {
+            PathPattern.parse(pattern)
+        }
     }
 }

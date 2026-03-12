@@ -19,35 +19,49 @@ internal class RouteGroup(
 
         val remaining = groupMatchResult.remainingPath ?: ""
         val subReq = request.withPath(RequestTarget(remaining))
+        val accumulator = RouteResolutionAccumulator()
 
-        var matchResult: RouteMatchResult? = null
         for (route in routes) {
-            matchResult = route.match(subReq)
-            if (matchResult is RouteMatchResult.Match) {
-                val pathParams = groupMatchResult.pathParams + matchResult.pathParams
-                return RouteMatchResult.Match(matchResult.handler, pathParams)
+            when (val matchResult = route.match(subReq)) {
+                is RouteMatchResult.Match -> {
+                    val mergedPathParams = groupMatchResult.pathParams + matchResult.pathParams
+                    val mergedScore = pathPattern.specificity.append(matchResult.specificity)
+                    accumulator.considerMatch(
+                        handler = matchResult.handler,
+                        pathParams = mergedPathParams,
+                        score = mergedScore
+                    )
+                }
+
+                is RouteMatchResult.MethodNotMatch -> {
+                    accumulator.considerMethodNotMatch(matchResult.allowedMethods)
+                }
+
+                is RouteMatchResult.NotMatch -> {}
             }
         }
-        return matchResult ?: RouteMatchResult.NotMatch
+
+        return accumulator.toRouteMatchResult()
     }
 }
 
 internal class Route(
     private val method: HttpMethod,
-    private val pathPattern: PathPattern,
+    internal val pathPattern: PathPattern,
     private val handler: Handler
 ) : RouteComponent {
     override fun match(request: HttpRequest): RouteMatchResult {
         return when (val pathMatchResult = pathPattern.match(request.path)) {
             is PathPatternMatchResult.Match -> {
                 if (request.method != method) {
-                    return RouteMatchResult.MethodNotMatch(setOf(method))
+                    RouteMatchResult.MethodNotMatch(setOf(method))
+                } else {
+                    RouteMatchResult.Match(
+                        handler = handler,
+                        pathParams = pathMatchResult.pathParams,
+                        specificity = pathPattern.specificity
+                    )
                 }
-
-                RouteMatchResult.Match(
-                    handler = handler,
-                    pathParams = pathMatchResult.pathParams
-                )
             }
 
             PathPatternMatchResult.NoMatch -> RouteMatchResult.NotMatch
@@ -56,7 +70,15 @@ internal class Route(
 }
 
 internal sealed interface RouteMatchResult {
-    class Match(val handler: Handler, val pathParams: Map<String, String>) : RouteMatchResult
-    class MethodNotMatch(val allowedMethods: Set<HttpMethod>) : RouteMatchResult
+    class Match(
+        val handler: Handler,
+        val pathParams: Map<String, String>,
+        val specificity: PathSpecificity
+    ) : RouteMatchResult
+
+    class MethodNotMatch(
+        val allowedMethods: Set<HttpMethod>
+    ) : RouteMatchResult
+
     object NotMatch : RouteMatchResult
 }

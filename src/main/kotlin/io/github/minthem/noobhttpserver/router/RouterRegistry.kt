@@ -10,15 +10,21 @@ internal class RouterRegistry {
         routers.add(router)
     }
 
-    fun find(request: HttpRequest): RouteMatchResult {
+    fun find(request: HttpRequest): RouterMatchResult {
+        val allowedMethods = linkedSetOf<io.github.minthem.noobhttpserver.http.HttpMethod>()
+
         for (router in routers) {
-            return when (val matchResult = router.findRoute(request)) {
-                is RouteMatchResult.Match -> matchResult
-                is RouteMatchResult.MethodNotMatch -> matchResult
-                is RouteMatchResult.NotMatch -> continue
+            when (val matchResult = router.findRoute(request)) {
+                is RouterMatchResult.Match -> return matchResult
+                is RouterMatchResult.MethodNotMatch -> allowedMethods.addAll(matchResult.allowedMethods)
+                is RouterMatchResult.NotMatch -> {}
             }
         }
 
-        return RouteMatchResult.NotMatch
+        return if (allowedMethods.isNotEmpty()) {
+            RouterMatchResult.MethodNotMatch(allowedMethods.toSet())
+        } else {
+            RouterMatchResult.NotMatch
+        }
     }
 }

@@ -9,6 +9,7 @@ import io.github.minthem.noobhttpserver.io.TimeoutExecutor
 import io.github.minthem.noobhttpserver.router.Context
 import io.github.minthem.noobhttpserver.router.RouteMatchResult
 import io.github.minthem.noobhttpserver.router.Router
+import io.github.minthem.noobhttpserver.router.RouterMatchResult
 import io.github.minthem.noobhttpserver.router.RouterRegistry
 import java.net.InetSocketAddress
 import java.net.StandardProtocolFamily
@@ -114,17 +115,17 @@ class Server(
         routerRegistry.register(router)
     }
 
-    private fun findHandler(request: HttpRequest): RouteMatchResult.Match {
+    private fun findHandler(request: HttpRequest): RouterMatchResult.Match {
         when (val matchResult = routerRegistry.find(request)) {
-            is RouteMatchResult.Match -> {
+            is RouterMatchResult.Match -> {
                 return matchResult
             }
 
-            is RouteMatchResult.MethodNotMatch -> {
+            is RouterMatchResult.MethodNotMatch -> {
                 throw MethodNotAllowException(request.method, matchResult.allowedMethods)
             }
 
-            is RouteMatchResult.NotMatch -> {
+            is RouterMatchResult.NotMatch -> {
                 throw RouteNotFoundException(request.method, request.path)
             }
         }

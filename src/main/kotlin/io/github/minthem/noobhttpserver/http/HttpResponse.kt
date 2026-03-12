@@ -38,9 +38,15 @@ class HttpResponse private constructor(
             }
 
             if (body is BodySpec.Chunked) {
-                headers.set("Transfer-Encoding", "chunked")
-            } else if ("Content-Length" !in headers) {
-                executor.contentLength()?.let { headers.set("Content-Length", it.toString()) }
+                headers["Transfer-Encoding"] = "chunked"
+                if ("Content-Length" in headers) {
+                    headers.remove("Content-Length")
+                }
+            } else {
+                executor.contentLength()?.let { headers["Content-Length"] = it.toString() }
+                if ("Transfer-Encoding" in headers) {
+                    headers.remove("Transfer-Encoding")
+                }
             }
 
             return HttpResponse(status, headers, executor)

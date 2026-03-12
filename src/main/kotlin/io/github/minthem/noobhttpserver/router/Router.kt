@@ -25,7 +25,7 @@ class Router(init: Router.() -> Unit) {
         val subRouter = Router(init)
 
         components.add(
-            RouteGroup(PathPattern.parse(pattern.trimEnd('/'), isPrefix = true), subRouter.components)
+            RouteGroup(PathPattern.parse(pattern.trimEnd('/').ifBlank { "/" }, isPrefix = true), subRouter.components)
         )
     }
 
@@ -33,20 +33,40 @@ class Router(init: Router.() -> Unit) {
         components.add(Route(method, PathPattern.parse(pattern.ifBlank { "/" }), handler))
     }
 
-    internal fun findRoute(request: HttpRequest): RouteMatchResult {
-        var matchResult: RouteMatchResult? = null
+    internal fun findRoute(request: HttpRequest): RouterMatchResult {
+        val accumulator = RouteResolutionAccumulator()
 
         for (component in components) {
-            when (val mr = component.match(request)) {
-                is RouteMatchResult.Match -> return mr
-                is RouteMatchResult.MethodNotMatch -> {
-                    matchResult = mr
+            when (val matchResult = component.match(request)) {
+                is RouteMatchResult.Match -> {
+                    accumulator.considerMatch(
+                        handler = matchResult.handler,
+                        pathParams = matchResult.pathParams,
+                        score = matchResult.specificity
+                    )
                 }
 
-                is RouteMatchResult.NotMatch -> continue
+                is RouteMatchResult.MethodNotMatch -> {
+                    accumulator.considerMethodNotMatch(matchResult.allowedMethods)
+                }
+
+                is RouteMatchResult.NotMatch -> {}
             }
         }
 
-        return matchResult ?: RouteMatchResult.NotMatch
+        return accumulator.toRouterMatchResult()
     }
+}
+
+internal sealed interface RouterMatchResult {
+    class Match(
+        val handler: Handler,
+        val pathParams: Map<String, String>
+    ) : RouterMatchResult
+
+    class MethodNotMatch(
+        val allowedMethods: Set<HttpMethod>
+    ) : RouterMatchResult
+
+    object NotMatch : RouterMatchResult
 }

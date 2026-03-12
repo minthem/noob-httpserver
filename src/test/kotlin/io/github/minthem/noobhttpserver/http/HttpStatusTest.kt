@@ -5,10 +5,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/**
- * HttpStatusTest contains unit tests for the HttpStatus enumeration.
- * These tests validate the behavior of the methods defined within HttpStatus.
- */
 class HttpStatusTest {
 
     @Test
@@ -70,6 +66,30 @@ class HttpStatusTest {
         assertTrue(serverError.isError())
         assertFalse(clientError.isInformational())
         assertFalse(serverError.isInformational())
+    }
+
+    @Test
+    fun `test isError returns false for non error statuses`() {
+        assertFalse(HttpStatus.OK.isError())
+        assertFalse(HttpStatus.CONTINUE.isError())
+        assertFalse(HttpStatus.MOVED_PERMANENTLY.isError())
+    }
+
+    @Test
+    fun `test status exposes code and reason phrase`() {
+        assertEquals(200, HttpStatus.OK.code)
+        assertEquals("OK", HttpStatus.OK.reasonPhrase)
+        assertEquals(404, HttpStatus.NOT_FOUND.code)
+        assertEquals("Not Found", HttpStatus.NOT_FOUND.reasonPhrase)
+    }
+
+    @Test
+    fun `test boundary classifications are correct`() {
+        assertTrue(HttpStatus.EARLY_HINTS.isInformational())
+        assertTrue(HttpStatus.IM_USED.isSuccess())
+        assertTrue(HttpStatus.PERMANENT_REDIRECT.isRedirection())
+        assertTrue(HttpStatus.UNAVAILABLE_FOR_LEGAL_REASONS.isClientError())
+        assertTrue(HttpStatus.NETWORK_AUTHENTICATION_REQUIRED.isServerError())
     }
 
     @Test

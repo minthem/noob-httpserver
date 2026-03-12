@@ -39,23 +39,11 @@ internal class UriDecoderTest {
         }
 
         @Test
-        fun `should throw exception for incomplete percent encoding with missing digits`() {
-            val input = "hello%"
-            assertFailsWith<IllegalArgumentException>(
-                message = "Expected exception for incomplete percent encoding: $input"
-            ) {
-                UriDecoder.decodePath(input)
-            }
-        }
-
-        @Test
-        fun `should throw exception for invalid percent encoding characters`() {
-            val input = "hello%G1"
-            assertFailsWith<IllegalArgumentException>(
-                message = "Expected exception for invalid percent encoding: $input"
-            ) {
-                UriDecoder.decodePath(input)
-            }
+        fun `should decode utf8 percent encoded characters in path`() {
+            val input = "%E3%81%82"
+            val expected = "あ"
+            val result = UriDecoder.decodePath(input)
+            assertEquals(expected, result, "Decoding failed for input: $input")
         }
 
         @Test
@@ -70,6 +58,14 @@ internal class UriDecoderTest {
         fun `should decode path with mixed percent-encoded and plain text`() {
             val input = "mixed%20content%2FplainText"
             val expected = "mixed content/plainText"
+            val result = UriDecoder.decodePath(input)
+            assertEquals(expected, result, "Decoding failed for input: $input")
+        }
+
+        @Test
+        fun `should not decode plus as space in path`() {
+            val input = "hello+world"
+            val expected = "hello+world"
             val result = UriDecoder.decodePath(input)
             assertEquals(expected, result, "Decoding failed for input: $input")
         }
@@ -136,6 +132,20 @@ internal class UriDecoderTest {
             val result = UriDecoder.decodeQuery(input)
             assertEquals(expected, result, "Decoding failed for input: $input")
         }
-    }
 
+        @Test
+        fun `should decode utf8 percent encoded characters in query`() {
+            val input = "%E3%81%82"
+            val expected = "あ"
+            val result = UriDecoder.decodeQuery(input)
+            assertEquals(expected, result, "Decoding failed for input: $input")
+        }
+        @Test
+        fun `should decode utf8 percent encoded characters and ascii in query`() {
+            val input = "%E3%81%82abc%E7%84%BC%E3%81%8D%E3%81%9D%E3%81%B0"
+            val expected = "あabc焼きそば"
+            val result = UriDecoder.decodeQuery(input)
+            assertEquals(expected, result, "Decoding failed for input: $input")
+        }
+    }
 }

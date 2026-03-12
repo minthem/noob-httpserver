@@ -6,7 +6,7 @@ import java.nio.channels.ReadableByteChannel
 class ReadableByteMock(private var bytes: List<ByteArray>) : ReadableByteChannel {
 
     override fun read(p0: ByteBuffer): Int {
-        val b = bytes.first()
+        val b = bytes.firstOrNull() ?: return -1
         bytes = bytes.drop(1)
 
         p0.put(b)

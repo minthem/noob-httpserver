@@ -5,13 +5,15 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
 import java.io.ByteArrayInputStream
+import java.nio.file.Files
 
 internal class MultipartBodyTest {
 
     /**
      * Tests the `part(name: String)` method which retrieves a specific multipart body part
-     * by its name. If the part with the specified name is already read, it retrieves it from 
+     * by its name. If the part with the specified name is already read, it retrieves it from
      * the cached parts; otherwise, it parses the input stream until the part is found or returns null.
      */
     @Test
@@ -174,5 +176,179 @@ internal class MultipartBodyTest {
         assertFailsWith<IllegalArgumentException> {
             body.part("part1")
         }
+    }
+
+    @Test
+    fun `test forEachPart after part should include cached and unread parts without duplication`() {
+        val input = """
+            --boundary
+            Content-Disposition: form-data; name="part1"
+
+            value1
+            --boundary
+            Content-Disposition: form-data; name="part2"
+
+            value2
+            --boundary
+            Content-Disposition: form-data; name="part3"
+
+            value3
+            --boundary--
+        """.trimIndent().replace("\n", "\r\n").toByteArray()
+
+        val body = MultipartBody(
+            stream = ByteArrayInputStream(input),
+            boundary = "boundary"
+        )
+
+        val part2 = body.part("part2")
+        assertNotNull(part2)
+        assertEquals("value2", (part2 as Multipart.FormField).value)
+
+        val parts = mutableListOf<Multipart>()
+        body.forEachPart { part -> parts.add(part) }
+
+        assertEquals(3, parts.size)
+        assertEquals(listOf("part1", "part2", "part3"), parts.map { it.name })
+        assertEquals(listOf("value1", "value2", "value3"), parts.map { (it as Multipart.FormField).value })
+    }
+
+    @Test
+    fun `test part after forEachPart should return cached part`() {
+        val input = """
+            --boundary
+            Content-Disposition: form-data; name="part1"
+
+            value1
+            --boundary
+            Content-Disposition: form-data; name="part2"
+
+            value2
+            --boundary--
+        """.trimIndent().replace("\n", "\r\n").toByteArray()
+
+        val body = MultipartBody(
+            stream = ByteArrayInputStream(input),
+            boundary = "boundary"
+        )
+
+        val parts = mutableListOf<Multipart>()
+        body.forEachPart { part -> parts.add(part) }
+
+        val part = body.part("part2")
+
+        assertNotNull(part)
+        assertEquals("part2", part.name)
+        assertEquals("value2", (part as Multipart.FormField).value)
+        assertEquals(parts[1], part)
+    }
+
+    @Test
+    fun `test retrieving file upload part by name`() {
+        val input = """
+            --boundary
+            Content-Disposition: form-data; name="file"; filename="hello.txt"
+            Content-Type: text/plain
+
+            hello file
+            --boundary--
+        """.trimIndent().replace("\n", "\r\n").toByteArray()
+
+        val body = MultipartBody(
+            stream = ByteArrayInputStream(input),
+            boundary = "boundary"
+        )
+
+        val part = body.part("file")
+
+        assertNotNull(part)
+        assertTrue(part is Multipart.FileUpload)
+        assertEquals("file", part.name)
+        assertEquals("hello.txt", part.filename)
+        assertEquals("hello file", String(part.asStream().readBytes()))
+    }
+
+    @Test
+    fun `test duplicate part names should keep latest part in cache`() {
+        val input = """
+            --boundary
+            Content-Disposition: form-data; name="part1"
+
+            first
+            --boundary
+            Content-Disposition: form-data; name="part1"
+
+            second
+            --boundary--
+        """.trimIndent().replace("\n", "\r\n").toByteArray()
+
+        val body = MultipartBody(
+            stream = ByteArrayInputStream(input),
+            boundary = "boundary"
+        )
+
+        val parts = mutableListOf<Multipart>()
+        body.forEachPart { part -> parts.add(part) }
+
+        val cached = body.part("part1")
+
+        assertEquals(2, parts.size)
+        assertEquals("first", (parts[0] as Multipart.FormField).value)
+        assertEquals("second", (parts[1] as Multipart.FormField).value)
+        assertNotNull(cached)
+        assertEquals("second", (cached as Multipart.FormField).value)
+    }
+
+    @Test
+    fun `test close should clear cached parts and delete temp files`() {
+        val largeContent = "a".repeat(1024 * 1024 + 1)
+        val input = """
+            --boundary
+            Content-Disposition: form-data; name="file"; filename="large.txt"
+            Content-Type: text/plain
+
+            $largeContent
+            --boundary--
+        """.trimIndent().replace("\n", "\r\n").toByteArray()
+
+        val body = MultipartBody(
+            stream = ByteArrayInputStream(input),
+            boundary = "boundary"
+        )
+
+        val part = body.part("file")
+        assertNotNull(part)
+        assertTrue(part is Multipart.FileUpload)
+        assertNotNull(part.file)
+        assertTrue(Files.exists(part.file))
+        val fileContent = Files.readString(part.file)
+        assertEquals(largeContent,fileContent )
+        val streamContent = String(part.asStream().readBytes())
+        assertEquals(largeContent,streamContent)
+
+        body.close()
+
+        assertTrue(Files.notExists(part.file))
+        assertNull(body.part("file"))
+    }
+
+    @Test
+    fun `test close should be safe when no file upload parts were read`() {
+        val input = """
+            --boundary
+            Content-Disposition: form-data; name="part1"
+
+            value1
+            --boundary--
+        """.trimIndent().replace("\n", "\r\n").toByteArray()
+
+        val body = MultipartBody(
+            stream = ByteArrayInputStream(input),
+            boundary = "boundary"
+        )
+
+        body.part("part1")
+        body.close()
+        body.close() // idempotent-ish behavior should not throw
     }
 }

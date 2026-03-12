@@ -16,8 +16,27 @@ class HttpMethodTest {
     }
 
     @Test
-    fun `fromString should throw an exception when the method is invalid`() {
-        assertThrows<IllegalArgumentException> { HttpMethod.fromString("INVALID") }
+    fun `value should return wire format method name`() {
+        assertEquals("GET", HttpMethod.GET.value())
+        assertEquals("POST", HttpMethod.POST.value())
+        assertEquals("PUT", HttpMethod.PUT.value())
+        assertEquals("DELETE", HttpMethod.DELETE.value())
+        assertEquals("HEAD", HttpMethod.HEAD.value())
+    }
 
+    @Test
+    fun `fromString should be case sensitive`() {
+        val exception = assertThrows<IllegalArgumentException> {
+            HttpMethod.fromString("get")
+        }
+        assertEquals("Invalid method: get", exception.message)
+    }
+
+    @Test
+    fun `fromString should throw an exception when the method is invalid`() {
+        val exception = assertThrows<IllegalArgumentException> {
+            HttpMethod.fromString("INVALID")
+        }
+        assertEquals("Invalid method: INVALID", exception.message)
     }
 }

@@ -30,9 +30,10 @@ data class RequestTarget internal constructor(private val value: String) {
 
 internal object RequestTargetParser {
 
-    fun parse(stream: ByteReadStream, limit: Int = 8192): RequestTarget {
+    fun parseFromStream(stream: ByteReadStream, limit: Int = 8192): RequestTarget {
         val sb = StringBuilder()
         var state = RequestTargetState.START
+        var index = 0
 
         while (true) {
             val c = try {
@@ -46,7 +47,7 @@ internal object RequestTargetParser {
                 throw IllegalArgumentException(
                     "Invalid character in request target: '${
                         c.toInt().toChar()
-                    }' (hex: ${c.toString(16)})"
+                    }' (hex: ${c.toString(16)}, index: $index)"
                 )
             }
 
@@ -55,6 +56,7 @@ internal object RequestTargetParser {
             }
 
             sb.append(c.toInt().toChar())
+            index++
             if (limit < sb.length) {
                 throw IllegalArgumentException("Invalid request target")
             }
@@ -71,7 +73,7 @@ internal object RequestTargetParser {
         },
         PATH {
             override fun next(b: Byte): RequestTargetState {
-                return if (LOOKUP_UNRESERVED[b.toInt() and 0xFF] || LOOKUP_SUB_DELIMITERS[b.toInt() and 0xFF] || b == COLON || b == AT) {
+                return if (LOOKUP_UNRESERVED[b.toInt() and 0xFF] || LOOKUP_SUB_DELIMITERS[b.toInt() and 0xFF] || b == COLON || b == AT || b == SLASH) {
                     PATH
                 } else if (b == PCT) {
                     PATH_PCT1

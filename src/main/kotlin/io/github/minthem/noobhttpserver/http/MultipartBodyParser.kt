@@ -79,7 +79,9 @@ internal class MultipartBodyParser(
     }
 
     private fun outputPartBody(): Pair<InputStream, Path?> {
-        var dst: OutputStream = ByteArrayOutputStream(1 * 1024 * 1024)
+        val memoryLen = 1 * 1024 * 1024 // TODO parameterized
+        val memory = ByteArrayOutputStream(memoryLen)
+        var dst: OutputStream = memory
         var findBoundary = false
         var bodySize = 0L
         var outputFile: Path? = null
@@ -89,9 +91,11 @@ internal class MultipartBodyParser(
                 val index = findByteSequence(boundaryEnd)
                 val len = if (index == -1) {
                     // boundaryがバッファ内にまだ無い
+                    // 読み込み済みデータ - boundaryサイズ分だけ後でreadする
+                    val readLen = maxOf(buffer.remaining() - boundaryEnd.size, 0)
                     // 補充
                     refillBuffer()
-                    maxOf(buffer.remaining() - boundaryEnd.size, 0)
+                    readLen
                 } else {
                     findBoundary = true
                     index - buffer.position()
@@ -100,13 +104,16 @@ internal class MultipartBodyParser(
                 val b = ByteArray(len)
                 buffer.get(b, 0, len)
 
-                if (outputFile == null && bodySize > 1 * 1024 * 1024) {
+                if (outputFile == null && bodySize > memoryLen) {
                     outputFile = Files.createTempFile("noobhttpserver", ".part")
                     dst = outputFile.outputStream(
                         StandardOpenOption.WRITE,
                         StandardOpenOption.CREATE,
                         StandardOpenOption.APPEND
                     )
+
+                    // 取り込み済みデータをファイルに書き込み
+                    memory.writeTo(dst)
                 }
                 dst.write(b)
             }
@@ -135,6 +142,7 @@ internal class MultipartBodyParser(
         while (true) {
             val index = findByteSequence(boundary)
             if (index == -1) {
+                buffer.position(maxOf(buffer.position() - boundary.size, 0))
                 refillBuffer()
                 continue
             }
