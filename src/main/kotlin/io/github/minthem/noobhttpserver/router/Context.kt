@@ -18,6 +18,7 @@ class Context internal constructor(
     val queryParams: Map<String, List<String>> by lazy { req.path.decodedQuery }
 
     private var readStream: Boolean = false
+    private var closed: Boolean = false
     private val cleanupActions = mutableListOf<() -> Unit>()
     private val bodyStream: InputStream
         get() {
@@ -61,11 +62,14 @@ class Context internal constructor(
     fun bodyAsBytes(): ByteArray = bodyStream.readBytes()
 
     fun bodyAsMultipart(): MultipartBody {
-        if (!(headers.contentType?.isCompatibleWith(MediaType.MULTIPART_FORM_DATA) ?: true)) {
+        val contentType = headers.contentType
+            ?: throw IllegalStateException("Content-Type must be multipart/form-data")
+
+        if (!contentType.isCompatibleWith(MediaType.MULTIPART_FORM_DATA)) {
             throw IllegalStateException("Content-Type must be multipart/form-data")
         }
 
-        val boundary = headers.contentType?.parameters?.get("boundary")
+        val boundary = contentType.parameters["boundary"]
             ?: throw IllegalStateException("Missing boundary parameter")
 
         if (readStream) {
@@ -80,7 +84,10 @@ class Context internal constructor(
     fun defer(action: () -> Unit) = cleanupActions.add(action)
 
     override fun close() {
-        cleanupActions.forEach { action ->
+        if (closed) return
+        closed = true
+
+        cleanupActions.asReversed().forEach { action ->
             try {
                 action.invoke()
             } catch (e: Exception) {
