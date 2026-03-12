@@ -72,7 +72,7 @@ internal class RequestTargetTest {
             mapOf(
                 "param1" to listOf("value1"),
                 "param2" to listOf("value2!$"),
-                "'()*+,;" to listOf("")
+                "'()* ,;" to listOf("")
             ),
             requestTarget.decodedQuery
         )
