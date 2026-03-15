@@ -1,6 +1,5 @@
 package io.github.minthem.noobhttpserver.http
 
-import io.github.minthem.noobhttpserver.io.ByteChannelReader
 import io.github.minthem.noobhttpserver.io.ByteReadStream
 import java.io.ByteArrayOutputStream
 
