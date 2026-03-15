@@ -1,7 +1,9 @@
 package io.github.minthem.noobhttpserver.http
 
+import io.github.minthem.noobhttpserver.config.HttpLimitsConfig
 import io.github.minthem.noobhttpserver.exception.HttpResponseException
 import io.github.minthem.noobhttpserver.io.ByteChannelReadStream
+import io.github.minthem.noobhttpserver.testutils.FixedReadableByteChannel
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.params.ParameterizedTest
@@ -15,11 +17,14 @@ import kotlin.test.assertEquals
 
 class HttpRequestParserTest {
 
+    private val config = HttpLimitsConfig()
+    private val headerParser = HttpHeadersParser(config)
+
     @Nested
     inner class SuccessTest {
         @Test
         fun `parse should return a request`() {
-            val socketMock = ReadableByteMock.fromStrings(
+            val socketMock = FixedReadableByteChannel.fromStrings(
                 listOf(
                     "GET /path HTTP/1.1\r\n",
                     "Host: localhost\r\n",
@@ -29,7 +34,7 @@ class HttpRequestParserTest {
             )
 
             val channel = ByteChannelReadStream(socketMock, ByteBuffer.allocate(1024).flip())
-            val parser = HttpRequestParser()
+            val parser = HttpRequestParser(headerParser, config)
             val actual = parser.parse(channel)
 
             val expected = HttpRequest(
@@ -53,7 +58,7 @@ class HttpRequestParserTest {
 
         @Test
         fun `parse should return a request when input is split across multiple reads`() {
-            val socketMock = ReadableByteMock.fromStrings(
+            val socketMock = FixedReadableByteChannel.fromStrings(
                 listOf(
                     "GET /pat",
                     "h HTTP/1.1\r\nHos",
@@ -65,7 +70,7 @@ class HttpRequestParserTest {
             )
 
             val channel = ByteChannelReadStream(socketMock, ByteBuffer.allocate(1024).flip())
-            val parser = HttpRequestParser()
+            val parser = HttpRequestParser(headerParser, config)
             val actual = parser.parse(channel)
 
             val expected = HttpRequest(
@@ -89,7 +94,7 @@ class HttpRequestParserTest {
 
         @Test
         fun `parse should return a request with body`() {
-            val socketMock = ReadableByteMock.fromStrings(
+            val socketMock = FixedReadableByteChannel.fromStrings(
                 listOf(
                     "POST /path HTTP/1.1\r\n",
                     "Host: localhost\r\n",
@@ -101,7 +106,7 @@ class HttpRequestParserTest {
             )
 
             val channel = ByteChannelReadStream(socketMock, ByteBuffer.allocate(1024).flip())
-            val parser = HttpRequestParser()
+            val parser = HttpRequestParser(headerParser, config)
             val actual = parser.parse(channel)
 
             val expected = HttpRequest(
@@ -126,7 +131,7 @@ class HttpRequestParserTest {
 
         @Test
         fun `parse should return a request with body is split across multiple reads`() {
-            val socketMock = ReadableByteMock.fromStrings(
+            val socketMock = FixedReadableByteChannel.fromStrings(
                 listOf(
                     "POST /pat",
                     "h HTTP/1.1\r\nHos",
@@ -139,7 +144,7 @@ class HttpRequestParserTest {
             )
 
             val channel = ByteChannelReadStream(socketMock, ByteBuffer.allocate(1024).flip())
-            val parser = HttpRequestParser()
+            val parser = HttpRequestParser(headerParser, config)
             val actual = parser.parse(channel)
 
             val expected = HttpRequest(
@@ -164,7 +169,7 @@ class HttpRequestParserTest {
 
         @Test
         fun `parse should return a request with transfer-encoding chunked`() {
-            val socketMock = ReadableByteMock.fromStrings(
+            val socketMock = FixedReadableByteChannel.fromStrings(
                 listOf(
                     "POST /path HTTP/1.1\r\n",
                     "Host: localhost\r\n",
@@ -179,7 +184,7 @@ class HttpRequestParserTest {
             )
 
             val channel = ByteChannelReadStream(socketMock, ByteBuffer.allocate(1024).flip())
-            val parser = HttpRequestParser()
+            val parser = HttpRequestParser(headerParser, config)
             val actual = parser.parse(channel)
 
             val expected = HttpRequest(
@@ -203,7 +208,7 @@ class HttpRequestParserTest {
 
         @Test
         fun `parse should return a request with transfer-encoding chunked split across multiple reads`() {
-            val socketMock = ReadableByteMock.fromStrings(
+            val socketMock = FixedReadableByteChannel.fromStrings(
                 listOf(
                     "POST /path HTTP/1.1\r\n",
                     "Host: localhost\r\n",
@@ -224,7 +229,7 @@ class HttpRequestParserTest {
             )
 
             val channel = ByteChannelReadStream(socketMock, ByteBuffer.allocate(1024).flip())
-            val parser = HttpRequestParser()
+            val parser = HttpRequestParser(headerParser, config)
             val actual = parser.parse(channel)
 
             val expected = HttpRequest(
@@ -248,7 +253,7 @@ class HttpRequestParserTest {
 
         @Test
         fun `parse should return a request with query parameters`() {
-            val socketMock = ReadableByteMock.fromStrings(
+            val socketMock = FixedReadableByteChannel.fromStrings(
                 listOf(
                     "GET /search?q=kotlin&q=http%20server HTTP/1.1\r\n",
                     "Host: localhost\r\n",
@@ -257,7 +262,7 @@ class HttpRequestParserTest {
             )
 
             val channel = ByteChannelReadStream(socketMock, ByteBuffer.allocate(1024).flip())
-            val parser = HttpRequestParser()
+            val parser = HttpRequestParser(headerParser, config)
             val actual = parser.parse(channel)
 
             assertEquals(HttpMethod.GET, actual.method)
@@ -268,7 +273,7 @@ class HttpRequestParserTest {
 
         @Test
         fun `parse should return a request with percent encoded request target`() {
-            val socketMock = ReadableByteMock.fromStrings(
+            val socketMock = FixedReadableByteChannel.fromStrings(
                 listOf(
                     "GET /users/%E3%81%82/profile HTTP/1.1\r\n",
                     "Host: localhost\r\n",
@@ -277,7 +282,7 @@ class HttpRequestParserTest {
             )
 
             val channel = ByteChannelReadStream(socketMock, ByteBuffer.allocate(1024).flip())
-            val parser = HttpRequestParser()
+            val parser = HttpRequestParser(headerParser, config)
             val actual = parser.parse(channel)
 
             assertEquals(RequestTarget("/users/%E3%81%82/profile"), actual.path)
@@ -286,7 +291,7 @@ class HttpRequestParserTest {
 
         @Test
         fun `parse should return an empty body stream when Content-Length is zero`() {
-            val socketMock = ReadableByteMock.fromStrings(
+            val socketMock = FixedReadableByteChannel.fromStrings(
                 listOf(
                     "POST /path HTTP/1.1\r\n",
                     "Host: localhost\r\n",
@@ -296,7 +301,7 @@ class HttpRequestParserTest {
             )
 
             val channel = ByteChannelReadStream(socketMock, ByteBuffer.allocate(1024).flip())
-            val parser = HttpRequestParser()
+            val parser = HttpRequestParser(headerParser, config)
             val actual = parser.parse(channel)
 
             assertEquals(HttpMethod.POST, actual.method)
@@ -307,7 +312,7 @@ class HttpRequestParserTest {
 
         @Test
         fun `parse should treat transfer encoding chunked case insensitively`() {
-            val socketMock = ReadableByteMock.fromStrings(
+            val socketMock = FixedReadableByteChannel.fromStrings(
                 listOf(
                     "POST /path HTTP/1.1\r\n",
                     "Host: localhost\r\n",
@@ -319,7 +324,7 @@ class HttpRequestParserTest {
             )
 
             val channel = ByteChannelReadStream(socketMock, ByteBuffer.allocate(1024).flip())
-            val parser = HttpRequestParser()
+            val parser = HttpRequestParser(headerParser, config)
             val actual = parser.parse(channel)
 
             assertEquals(HttpMethod.POST, actual.method)
@@ -331,7 +336,7 @@ class HttpRequestParserTest {
 
         @Test
         fun `parse should read only content length bytes from body`() {
-            val socketMock = ReadableByteMock.fromStrings(
+            val socketMock = FixedReadableByteChannel.fromStrings(
                 listOf(
                     "POST /path HTTP/1.1\r\n",
                     "Host: localhost\r\n",
@@ -342,7 +347,7 @@ class HttpRequestParserTest {
             )
 
             val channel = ByteChannelReadStream(socketMock, ByteBuffer.allocate(1024).flip())
-            val parser = HttpRequestParser()
+            val parser = HttpRequestParser(headerParser, config)
             val actual = parser.parse(channel)
 
             assertContentEquals(
@@ -351,218 +356,256 @@ class HttpRequestParserTest {
                 "Content-Length で指定された分だけ読み取ることを期待"
             )
         }
+    }
 
-        @Nested
-        inner class FailureTest {
-            @ParameterizedTest
-            @ValueSource(strings = ["get", "INVALID", "TOO_LONG_HTTP_METHOD"])
-            fun `parse should throw an exception when method is invalid`(method: String) {
-                val socketMock = ReadableByteMock.fromStrings(
-                    listOf(
-                        "$method /path HTTP/1.1\r\n",
-                        "Host: localhost\r\n",
-                        "Date: Sun Dec 14 19:14:13 JST 2025\r\n",
-                        "\r\n"
-                    )
+    @Nested
+    inner class FailureTest {
+        @ParameterizedTest
+        @ValueSource(strings = ["get", "INVALID", "TOO_LONG_HTTP_METHOD"])
+        fun `parse should throw an exception when method is invalid`(method: String) {
+            val socketMock = FixedReadableByteChannel.fromStrings(
+                listOf(
+                    "$method /path HTTP/1.1\r\n",
+                    "Host: localhost\r\n",
+                    "Date: Sun Dec 14 19:14:13 JST 2025\r\n",
+                    "\r\n"
                 )
-                val channel = ByteChannelReadStream(socketMock, ByteBuffer.allocate(1024).flip())
-                val parser = HttpRequestParser()
-                val exp = assertThrows<HttpResponseException> { parser.parse(channel) }
-                assertEquals(HttpStatus.BAD_REQUEST, exp.httpResponse.status, "HTTPステータスがBAD_REQUESTであること")
-                assertEquals("close", exp.httpResponse.headers["Connection"], "Connectionヘッダーがcloseであること")
-            }
-
-            @ParameterizedTest
-            @ValueSource(strings = ["HTTP/2.0", "HTTP/1.2", "HTTP/123456789", "", "HTTP/1.1\r"])
-            fun `parse should throw an exception when protocol is invalid`(protocol: String) {
-                val socketMock = ReadableByteMock.fromStrings(
-                    listOf(
-                        "GET /path $protocol\r\n",
-                        "Host: localhost\r\n",
-                        "Date: Sun Dec 14 19:14:13 JST 2025\r\n",
-                        "\r\n"
-                    )
-                )
-                val channel = ByteChannelReadStream(socketMock, ByteBuffer.allocate(1024).flip())
-                val parser = HttpRequestParser()
-
-                val exp = assertThrows<HttpResponseException> { parser.parse(channel) }
-                assertEquals(HttpStatus.BAD_REQUEST, exp.httpResponse.status, "HTTPステータスがBAD_REQUESTであること")
-                assertEquals("close", exp.httpResponse.headers["Connection"], "Connectionヘッダーがcloseであること")
-            }
-
-            @Test
-            fun `parse should throw an exception when header name is invalid`() {
-                val socketMock = ReadableByteMock.fromStrings(
-                    listOf(
-                        "GET /path HTTP/1.1\r\n",
-                        "Invalid Host: localhost\r\n",
-                        "Date: Sun Dec 14 19:14:13 JST 2025\r\n",
-                        "\r\n"
-                    )
-                )
-                val channel = ByteChannelReadStream(socketMock, ByteBuffer.allocate(1024).flip())
-                val parser = HttpRequestParser()
-                val exp = assertThrows<HttpResponseException> { parser.parse(channel) }
-                assertEquals(HttpStatus.BAD_REQUEST, exp.httpResponse.status, "HTTPステータスがBAD_REQUESTであること")
-                assertEquals("close", exp.httpResponse.headers["Connection"], "Connectionヘッダーがcloseであること")
-            }
-
-            @Test
-            fun `parse should throw an exception when header value is invalid`() {
-                val socketMock = ReadableByteMock.fromStrings(
-                    listOf(
-                        "GET /path HTTP/1.1\r\n",
-                        "Host: Invalid Value\r\r\n",
-                        "Date: Sun Dec 14 19:14:13 JST 2025\r\n",
-                        "\r\n"
-                    )
-                )
-
-                val channel = ByteChannelReadStream(socketMock, ByteBuffer.allocate(1024).flip())
-                val parser = HttpRequestParser()
-                val exp = assertThrows<HttpResponseException> { parser.parse(channel) }
-                assertEquals(HttpStatus.BAD_REQUEST, exp.httpResponse.status, "HTTPステータスがBAD_REQUESTであること")
-                assertEquals("close", exp.httpResponse.headers["Connection"], "Connectionヘッダーがcloseであること")
-            }
-
-            @Test
-            fun `parse should throw an exception when Content-Length and Transfer-Encoding headers are mutually exclusive`() {
-                val socketMock = ReadableByteMock.fromStrings(
-                    listOf(
-                        "POST /path HTTP/1.1\r\n",
-                        "Host: localhost\r\n",
-                        "Date: Sun Dec 14 19:14:13 JST 2025\r\n",
-                        "Transfer-Encoding: chunked\r\n",
-                        "Content-Length: 36\r\n",
-                        "\r\n",
-                        "5\r\nHello\r\n",
-                        "A\r\nHello Worl\r\n",
-                        "1\r\nd\r\n",
-                        "0\r\n\r\n"
-                    )
-                )
-
-                val channel = ByteChannelReadStream(socketMock, ByteBuffer.allocate(1024).flip())
-                val parser = HttpRequestParser()
-                val exp = assertThrows<HttpResponseException> { parser.parse(channel) }
-                assertEquals(HttpStatus.BAD_REQUEST, exp.httpResponse.status, "HTTPステータスがBAD_REQUESTであること")
-                assertEquals("close", exp.httpResponse.headers["Connection"], "Connectionヘッダーがcloseであること")
-            }
-
-            @Test
-            fun `parse should throw an exception when Request-Target is invalid`() {
-                val socketMock = ReadableByteMock.fromStrings(
-                    listOf(
-                        "GET /path/with/invalid|char HTTP/1.1\r\n",
-                        "Host: localhost\r\n",
-                        "Date: Sun Dec 14 19:14:13 JST 2025\r\n",
-                        "\r\n"
-                    )
-                )
-                val channel = ByteChannelReadStream(socketMock, ByteBuffer.allocate(1024).flip())
-                val parser = HttpRequestParser()
-                val exp = assertThrows<HttpResponseException> { parser.parse(channel) }
-                assertEquals(HttpStatus.BAD_REQUEST, exp.httpResponse.status, "HTTPステータスがBAD_REQUESTであること")
-                assertEquals("close", exp.httpResponse.headers["Connection"], "Connectionヘッダーがcloseであること")
-            }
-
-            @Test
-            fun `parse should throw an exception when request target and protocol are not separated by space`() {
-                val socketMock = ReadableByteMock.fromStrings(
-                    listOf(
-                        "GET /pathHTTP/1.1\r\n",
-                        "Host: localhost\r\n",
-                        "\r\n"
-                    )
-                )
-
-                val channel = ByteChannelReadStream(socketMock, ByteBuffer.allocate(1024).flip())
-                val parser = HttpRequestParser()
-
-                val exp = assertThrows<HttpResponseException> { parser.parse(channel) }
-                assertEquals(HttpStatus.BAD_REQUEST, exp.httpResponse.status)
-                assertEquals("close", exp.httpResponse.headers["Connection"])
-            }
-
-            @Test
-            fun `parse should throw an exception when request line ends with LF only`() {
-                val socketMock = ReadableByteMock.fromStrings(
-                    listOf(
-                        "GET /path HTTP/1.1\n",
-                        "Host: localhost\r\n",
-                        "\r\n"
-                    )
-                )
-
-                val channel = ByteChannelReadStream(socketMock, ByteBuffer.allocate(1024).flip())
-                val parser = HttpRequestParser()
-
-                val exp = assertThrows<HttpResponseException> { parser.parse(channel) }
-                assertEquals(HttpStatus.BAD_REQUEST, exp.httpResponse.status)
-                assertEquals("close", exp.httpResponse.headers["Connection"])
-            }
-
-            @Test
-            fun `parse should throw an exception when request line ends unexpectedly`() {
-                val socketMock = ReadableByteMock.fromStrings(
-                    listOf(
-                        "GET /path HTTP/1.1"
-                    )
-                )
-
-                val channel = ByteChannelReadStream(socketMock, ByteBuffer.allocate(1024).flip())
-                val parser = HttpRequestParser()
-
-                val exp = assertThrows<HttpResponseException> { parser.parse(channel) }
-                assertEquals(HttpStatus.BAD_REQUEST, exp.httpResponse.status)
-                assertEquals("close", exp.httpResponse.headers["Connection"])
-            }
-
-            @Test
-            fun `parse should throw an exception when Content-Length is not numeric`() {
-                val socketMock = ReadableByteMock.fromStrings(
-                    listOf(
-                        "POST /path HTTP/1.1\r\n",
-                        "Host: localhost\r\n",
-                        "Content-Length: abc\r\n",
-                        "\r\n"
-                    )
-                )
-
-                val channel = ByteChannelReadStream(socketMock, ByteBuffer.allocate(1024).flip())
-                val parser = HttpRequestParser()
-
-                val exp = assertThrows<HttpResponseException> { parser.parse(channel) }
-                assertEquals(HttpStatus.BAD_REQUEST, exp.httpResponse.status)
-                assertEquals("close", exp.httpResponse.headers["Connection"])
-            }
-
-            @Test
-            fun `parse should throw an exception when Content-Length is negative`() {
-                val socketMock = ReadableByteMock.fromStrings(
-                    listOf(
-                        "POST /path HTTP/1.1\r\n",
-                        "Host: localhost\r\n",
-                        "Content-Length: -1\r\n",
-                        "\r\n"
-                    )
-                )
-
-                val channel = ByteChannelReadStream(socketMock, ByteBuffer.allocate(1024).flip())
-                val parser = HttpRequestParser()
-
-                val exp = assertThrows<HttpResponseException> { parser.parse(channel) }
-                assertEquals(HttpStatus.BAD_REQUEST, exp.httpResponse.status)
-                assertEquals("close", exp.httpResponse.headers["Connection"])
-            }
+            )
+            val channel = ByteChannelReadStream(socketMock, ByteBuffer.allocate(1024).flip())
+            val parser = HttpRequestParser(headerParser, config)
+            val exp = assertThrows<HttpResponseException> { parser.parse(channel) }
+            assertEquals(HttpStatus.BAD_REQUEST, exp.httpResponse.status, "HTTPステータスがBAD_REQUESTであること")
+            assertEquals("close", exp.httpResponse.headers["Connection"], "Connectionヘッダーがcloseであること")
         }
 
-        private fun assertRequestEqualsIgnoringBody(expected: HttpRequest, actual: HttpRequest) {
-            assertEquals(expected.method, actual.method, "HTTPメソッドが一致することを期待")
-            assertEquals(expected.path, actual.path, "パスが一致することを期待")
-            assertEquals(expected.protocol, actual.protocol, "プロトコル(HTTPバージョン)が一致することを期待")
-            assertEquals(expected.headers, actual.headers, "ヘッダーが一致することを期待")
+        @ParameterizedTest
+        @ValueSource(strings = ["HTTP/2.0", "HTTP/1.2", "HTTP/123456789", "", "HTTP/1.1\r"])
+        fun `parse should throw an exception when protocol is invalid`(protocol: String) {
+            val socketMock = FixedReadableByteChannel.fromStrings(
+                listOf(
+                    "GET /path $protocol\r\n",
+                    "Host: localhost\r\n",
+                    "Date: Sun Dec 14 19:14:13 JST 2025\r\n",
+                    "\r\n"
+                )
+            )
+            val channel = ByteChannelReadStream(socketMock, ByteBuffer.allocate(1024).flip())
+            val parser = HttpRequestParser(headerParser, config)
+
+            val exp = assertThrows<HttpResponseException> { parser.parse(channel) }
+            assertEquals(HttpStatus.BAD_REQUEST, exp.httpResponse.status, "HTTPステータスがBAD_REQUESTであること")
+            assertEquals("close", exp.httpResponse.headers["Connection"], "Connectionヘッダーがcloseであること")
         }
+
+        @Test
+        fun `parse should throw an exception when header name is invalid`() {
+            val socketMock = FixedReadableByteChannel.fromStrings(
+                listOf(
+                    "GET /path HTTP/1.1\r\n",
+                    "Invalid Host: localhost\r\n",
+                    "Date: Sun Dec 14 19:14:13 JST 2025\r\n",
+                    "\r\n"
+                )
+            )
+            val channel = ByteChannelReadStream(socketMock, ByteBuffer.allocate(1024).flip())
+            val parser = HttpRequestParser(headerParser, config)
+            val exp = assertThrows<HttpResponseException> { parser.parse(channel) }
+            assertEquals(HttpStatus.BAD_REQUEST, exp.httpResponse.status, "HTTPステータスがBAD_REQUESTであること")
+            assertEquals("close", exp.httpResponse.headers["Connection"], "Connectionヘッダーがcloseであること")
+        }
+        @Test
+        fun `parse should throw an exception when header name is too long`() {
+            val socketMock = FixedReadableByteChannel.fromStrings(
+                listOf(
+                    "GET /path HTTP/1.1\r\n",
+                    "Host: localhost\r\n",
+                    "Date: Sun Dec 14 19:14:13 JST 2025\r\n",
+                    "L".repeat(256) ,
+                    ": value\r\n",
+                    "\r\n"
+                )
+            )
+            val channel = ByteChannelReadStream(socketMock, ByteBuffer.allocate(1024).flip())
+            val headerConfig = HttpLimitsConfig(maxHeaderNameBytes = 255)
+            val parser = HttpRequestParser(HttpHeadersParser(headerConfig), config)
+            val exp = assertThrows<HttpResponseException> { parser.parse(channel) }
+            assertEquals(HttpStatus.BAD_REQUEST, exp.httpResponse.status, "HTTPステータスがBAD_REQUESTであること")
+            assertEquals("close", exp.httpResponse.headers["Connection"], "Connectionヘッダーがcloseであること")
+        }
+
+        @Test
+        fun `parse should throw an exception when header value is invalid`() {
+            val socketMock = FixedReadableByteChannel.fromStrings(
+                listOf(
+                    "GET /path HTTP/1.1\r\n",
+                    "Host: Invalid Value\r\r\n",
+                    "Date: Sun Dec 14 19:14:13 JST 2025\r\n",
+                    "\r\n"
+                )
+            )
+
+            val channel = ByteChannelReadStream(socketMock, ByteBuffer.allocate(1024).flip())
+            val parser = HttpRequestParser(headerParser, config)
+            val exp = assertThrows<HttpResponseException> { parser.parse(channel) }
+            assertEquals(HttpStatus.BAD_REQUEST, exp.httpResponse.status, "HTTPステータスがBAD_REQUESTであること")
+            assertEquals("close", exp.httpResponse.headers["Connection"], "Connectionヘッダーがcloseであること")
+        }
+
+        @Test
+        fun `parse should throw an exception when Content-Length and Transfer-Encoding headers are mutually exclusive`() {
+            val socketMock = FixedReadableByteChannel.fromStrings(
+                listOf(
+                    "POST /path HTTP/1.1\r\n",
+                    "Host: localhost\r\n",
+                    "Date: Sun Dec 14 19:14:13 JST 2025\r\n",
+                    "Transfer-Encoding: chunked\r\n",
+                    "Content-Length: 36\r\n",
+                    "\r\n",
+                    "5\r\nHello\r\n",
+                    "A\r\nHello Worl\r\n",
+                    "1\r\nd\r\n",
+                    "0\r\n\r\n"
+                )
+            )
+
+            val channel = ByteChannelReadStream(socketMock, ByteBuffer.allocate(1024).flip())
+            val parser = HttpRequestParser(headerParser, config)
+            val exp = assertThrows<HttpResponseException> { parser.parse(channel) }
+            assertEquals(HttpStatus.BAD_REQUEST, exp.httpResponse.status, "HTTPステータスがBAD_REQUESTであること")
+            assertEquals("close", exp.httpResponse.headers["Connection"], "Connectionヘッダーがcloseであること")
+        }
+
+        @Test
+        fun `parse should throw an exception when Request-Target is invalid`() {
+            val socketMock = FixedReadableByteChannel.fromStrings(
+                listOf(
+                    "GET /path/with/invalid|char HTTP/1.1\r\n",
+                    "Host: localhost\r\n",
+                    "Date: Sun Dec 14 19:14:13 JST 2025\r\n",
+                    "\r\n"
+                )
+            )
+            val channel = ByteChannelReadStream(socketMock, ByteBuffer.allocate(1024).flip())
+            val parser = HttpRequestParser(headerParser, config)
+            val exp = assertThrows<HttpResponseException> { parser.parse(channel) }
+            assertEquals(HttpStatus.BAD_REQUEST, exp.httpResponse.status, "HTTPステータスがBAD_REQUESTであること")
+            assertEquals("close", exp.httpResponse.headers["Connection"], "Connectionヘッダーがcloseであること")
+        }
+
+        @Test
+        fun `parser should throw an exception when Request-Target is too long`() {
+            val socketMock = FixedReadableByteChannel.fromStrings(
+                listOf(
+                    "GET ",
+                    "/" + "a".repeat(1000),
+                    " HTTP/1.1\r\n",
+                    "Host: localhost\r\n",
+                    "Date: Sun Dec 14 19:14:13 JST 2025\r\n",
+                    "\r\n"
+                )
+            )
+            val channel = ByteChannelReadStream(socketMock, ByteBuffer.allocate(1024).flip())
+            val parser = HttpRequestParser(headerParser, HttpLimitsConfig(maxRequestTargetBytes = 1000))
+            val exp = assertThrows<HttpResponseException> { parser.parse(channel) }
+            assertEquals(HttpStatus.BAD_REQUEST, exp.httpResponse.status, "HTTPステータスがBAD_REQUESTであること")
+            assertEquals("close", exp.httpResponse.headers["Connection"], "Connectionヘッダーがcloseであること")
+        }
+
+        @Test
+        fun `parse should throw an exception when request target and protocol are not separated by space`() {
+            val socketMock = FixedReadableByteChannel.fromStrings(
+                listOf(
+                    "GET /pathHTTP/1.1\r\n",
+                    "Host: localhost\r\n",
+                    "\r\n"
+                )
+            )
+
+            val channel = ByteChannelReadStream(socketMock, ByteBuffer.allocate(1024).flip())
+            val parser = HttpRequestParser(headerParser, config)
+
+            val exp = assertThrows<HttpResponseException> { parser.parse(channel) }
+            assertEquals(HttpStatus.BAD_REQUEST, exp.httpResponse.status)
+            assertEquals("close", exp.httpResponse.headers["Connection"])
+        }
+
+        @Test
+        fun `parse should throw an exception when request line ends with LF only`() {
+            val socketMock = FixedReadableByteChannel.fromStrings(
+                listOf(
+                    "GET /path HTTP/1.1\n",
+                    "Host: localhost\r\n",
+                    "\r\n"
+                )
+            )
+
+            val channel = ByteChannelReadStream(socketMock, ByteBuffer.allocate(1024).flip())
+            val parser = HttpRequestParser(headerParser, config)
+
+            val exp = assertThrows<HttpResponseException> { parser.parse(channel) }
+            assertEquals(HttpStatus.BAD_REQUEST, exp.httpResponse.status)
+            assertEquals("close", exp.httpResponse.headers["Connection"])
+        }
+
+        @Test
+        fun `parse should throw an exception when request line ends unexpectedly`() {
+            val socketMock = FixedReadableByteChannel.fromStrings(
+                listOf(
+                    "GET /path HTTP/1.1"
+                )
+            )
+
+            val channel = ByteChannelReadStream(socketMock, ByteBuffer.allocate(1024).flip())
+            val parser = HttpRequestParser(headerParser, config)
+
+            val exp = assertThrows<HttpResponseException> { parser.parse(channel) }
+            assertEquals(HttpStatus.BAD_REQUEST, exp.httpResponse.status)
+            assertEquals("close", exp.httpResponse.headers["Connection"])
+        }
+
+        @Test
+        fun `parse should throw an exception when Content-Length is not numeric`() {
+            val socketMock = FixedReadableByteChannel.fromStrings(
+                listOf(
+                    "POST /path HTTP/1.1\r\n",
+                    "Host: localhost\r\n",
+                    "Content-Length: abc\r\n",
+                    "\r\n"
+                )
+            )
+
+            val channel = ByteChannelReadStream(socketMock, ByteBuffer.allocate(1024).flip())
+            val parser = HttpRequestParser(headerParser, config)
+
+            val exp = assertThrows<HttpResponseException> { parser.parse(channel) }
+            assertEquals(HttpStatus.BAD_REQUEST, exp.httpResponse.status)
+            assertEquals("close", exp.httpResponse.headers["Connection"])
+        }
+
+        @Test
+        fun `parse should throw an exception when Content-Length is negative`() {
+            val socketMock = FixedReadableByteChannel.fromStrings(
+                listOf(
+                    "POST /path HTTP/1.1\r\n",
+                    "Host: localhost\r\n",
+                    "Content-Length: -1\r\n",
+                    "\r\n"
+                )
+            )
+
+            val channel = ByteChannelReadStream(socketMock, ByteBuffer.allocate(1024).flip())
+            val parser = HttpRequestParser(headerParser, config)
+
+            val exp = assertThrows<HttpResponseException> { parser.parse(channel) }
+            assertEquals(HttpStatus.BAD_REQUEST, exp.httpResponse.status)
+            assertEquals("close", exp.httpResponse.headers["Connection"])
+        }
+    }
+
+    private fun assertRequestEqualsIgnoringBody(expected: HttpRequest, actual: HttpRequest) {
+        assertEquals(expected.method, actual.method, "HTTPメソッドが一致することを期待")
+        assertEquals(expected.path, actual.path, "パスが一致することを期待")
+        assertEquals(expected.protocol, actual.protocol, "プロトコル(HTTPバージョン)が一致することを期待")
+        assertEquals(expected.headers, actual.headers, "ヘッダーが一致することを期待")
     }
 }

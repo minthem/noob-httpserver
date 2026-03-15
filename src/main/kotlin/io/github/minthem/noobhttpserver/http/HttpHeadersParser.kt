@@ -1,24 +1,28 @@
 package io.github.minthem.noobhttpserver.http
 
+import io.github.minthem.noobhttpserver.config.HttpLimitsConfig
 import io.github.minthem.noobhttpserver.http.HttpHeadersState.*
 import io.github.minthem.noobhttpserver.io.ByteReadStream
 import java.io.EOFException
 
-internal object HttpHeadersParser {
+internal class HttpHeadersParser(
+    private val config: HttpLimitsConfig
+) {
 
-    // TODO Read limit
     fun parse(stream: ByteReadStream): HttpHeaders {
         val headers = MutableHttpHeaders()
         var state = HEADER_NAME
         val buffer = StringBuilder()
+        var totalBytes = 0
+        var headerCount = 0
 
         section@ while (true) {
-            // header name
             header@ while (true) {
-                val b = try {
-                    stream.next()
-                } catch (_: EOFException) {
-                    throw IllegalArgumentException("Unexpected end of stream in headers")
+                val b = streamNext(stream)
+
+                totalBytes++
+                if (totalBytes > config.maxHeaderSectionBytes) {
+                    throw IllegalArgumentException("Too many header bytes")
                 }
                 state = state.next(b)
 
@@ -26,6 +30,9 @@ internal object HttpHeadersParser {
                     throw IllegalArgumentException("Invalid header name")
                 } else if (state == HEADER_NAME) {
                     buffer.append(b.toInt().toChar())
+                    if (buffer.length > config.maxHeaderNameBytes) {
+                        throw IllegalArgumentException("Too many header name bytes")
+                    }
                 } else if (state == HEADER_NAME_END) {
                     break@header
                 } else if (state == HEADER_SECTION_END_LF) {
@@ -42,12 +49,12 @@ internal object HttpHeadersParser {
             }
             buffer.clear()
 
-            // header value
             value@ while (true) {
-                val b = try {
-                    stream.next()
-                } catch (_: EOFException) {
-                    throw IllegalArgumentException("Unexpected end of stream in headers")
+                val b = streamNext(stream)
+
+                totalBytes++
+                if (totalBytes > config.maxHeaderSectionBytes) {
+                    throw IllegalArgumentException("Too many header bytes")
                 }
                 state = state.next(b)
 
@@ -55,6 +62,9 @@ internal object HttpHeadersParser {
                     throw IllegalArgumentException("Invalid header value")
                 } else if (state == HEADER_VALUE) {
                     buffer.append(b.toInt().toChar())
+                    if (buffer.length > config.maxHeaderValueBytes) {
+                        throw IllegalArgumentException("Too many header value bytes")
+                    }
                 } else if (state == HEADER_END_LF) {
                     break@value
                 }
@@ -63,11 +73,25 @@ internal object HttpHeadersParser {
             val fieldValue = buffer.toString().trim()
             headers.add(fieldName, fieldValue)
             buffer.clear()
+
+            headerCount++
+            if (headerCount > config.maxHeaderCount) {
+                throw IllegalArgumentException("Too many headers")
+            }
         }
 
         return headers
     }
+
+    private fun streamNext(stream: ByteReadStream): Byte {
+        return try {
+            stream.next()
+        } catch (_: EOFException) {
+            throw IllegalArgumentException("Unexpected end of stream in headers")
+        }
+    }
 }
+
 
 private enum class HttpHeadersState {
     HEADER_NAME {

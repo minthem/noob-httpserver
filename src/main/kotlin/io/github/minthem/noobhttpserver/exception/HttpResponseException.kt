@@ -12,9 +12,21 @@ open class HttpResponseException(
 ) : RuntimeException(message, cause)
 
 
+class BadRequestException(
+    message: String,
+    cause: Throwable? = null
+) : HttpResponseException(
+    message = "Bad request: $message",
+    cause = cause,
+    httpResponse = HttpResponse.build {
+        status = HttpStatus.BAD_REQUEST
+        header("connection", "close")
+    }
+)
+
 internal class MethodNotAllowException(
-    requestMethod: HttpMethod,
-    allowedMethods: Set<HttpMethod>
+    val requestMethod: HttpMethod,
+    val allowedMethods: Set<HttpMethod>
 ) : HttpResponseException(
     message = "Method $requestMethod is not allowed. Allowed methods: $allowedMethods",
     httpResponse = HttpResponse.build {
@@ -24,8 +36,8 @@ internal class MethodNotAllowException(
 )
 
 internal class RouteNotFoundException(
-    method: HttpMethod,
-    requestTarget: RequestTarget
+    val method: HttpMethod,
+    val requestTarget: RequestTarget
 ) : HttpResponseException(
     message = "No route found for $method $requestTarget",
     httpResponse = HttpResponse.build {

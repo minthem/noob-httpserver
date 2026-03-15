@@ -1,12 +1,16 @@
 package io.github.minthem.noobhttpserver.http
 
-import io.github.minthem.noobhttpserver.exception.HttpResponseException
+import io.github.minthem.noobhttpserver.config.HttpLimitsConfig
+import io.github.minthem.noobhttpserver.exception.BadRequestException
 import io.github.minthem.noobhttpserver.io.BodySourceInputStream
 import io.github.minthem.noobhttpserver.io.ByteReadStream
 import java.io.EOFException
 import java.io.InputStream
 
-internal class HttpRequestParser {
+internal class HttpRequestParser(
+    private val headerParser: HttpHeadersParser,
+    private val config: HttpLimitsConfig
+) {
 
     fun parse(stream: ByteReadStream): HttpRequest {
         try {
@@ -17,14 +21,7 @@ internal class HttpRequestParser {
             val bodyStream = getInputStreamForRequestBody(stream, headers)
             return HttpRequest(method, requestTarget, protocol, headers, bodyStream)
         } catch (e: IllegalArgumentException) {
-            throw HttpResponseException(
-                message = e.message ?: "Invalid request",
-                cause = e,
-                httpResponse = HttpResponse.build {
-                    status = HttpStatus.BAD_REQUEST
-                    header("connection", "close")
-                }
-            )
+            throw BadRequestException(e.message ?: "Invalid request", e)
         }
     }
 
@@ -44,7 +41,7 @@ internal class HttpRequestParser {
     }
 
     private fun readRequestTarget(stream: ByteReadStream): RequestTarget {
-        return RequestTargetParser.parseFromStream(stream) // TODO specified length
+        return RequestTargetParser.parseFromStream(stream, config.maxRequestTargetBytes)
     }
 
     private fun readProtocol(stream: ByteReadStream): HttpProtocol {
@@ -71,7 +68,7 @@ internal class HttpRequestParser {
 
     private fun readHeaders(stream: ByteReadStream): HttpHeaders {
         return try {
-            HttpHeadersParser.parse(stream)
+            headerParser.parse(stream)
         } catch (_: EOFException) {
             throw IllegalArgumentException("Unexpected end of stream while reading headers")
         }

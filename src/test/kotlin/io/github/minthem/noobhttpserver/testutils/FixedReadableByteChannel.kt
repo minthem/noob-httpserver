@@ -1,9 +1,9 @@
-package io.github.minthem.noobhttpserver.http
+package io.github.minthem.noobhttpserver.testutils
 
 import java.nio.ByteBuffer
 import java.nio.channels.ReadableByteChannel
 
-class ReadableByteMock(private var bytes: List<ByteArray>) : ReadableByteChannel {
+class FixedReadableByteChannel(private var bytes: List<ByteArray>) : ReadableByteChannel {
 
     override fun read(p0: ByteBuffer): Int {
         val b = bytes.firstOrNull() ?: return -1
@@ -18,9 +18,9 @@ class ReadableByteMock(private var bytes: List<ByteArray>) : ReadableByteChannel
     override fun close() {}
 
     companion object {
-        fun fromStrings(strings: List<String>): ReadableByteMock {
+        fun fromStrings(strings: List<String>): FixedReadableByteChannel {
             val bytes = strings.map { it.toByteArray() }
-            return ReadableByteMock(bytes)
+            return FixedReadableByteChannel(bytes)
         }
     }
 }
