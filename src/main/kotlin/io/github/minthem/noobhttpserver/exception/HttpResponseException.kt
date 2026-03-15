@@ -12,6 +12,18 @@ open class HttpResponseException(
 ) : RuntimeException(message, cause)
 
 
+class BadRequestException(
+    message: String,
+    cause: Throwable? = null
+) : HttpResponseException(
+    message = "Bad request: $message",
+    cause = cause,
+    httpResponse = HttpResponse.build {
+        status = HttpStatus.BAD_REQUEST
+        header("connection", "close")
+    }
+)
+
 internal class MethodNotAllowException(
     val requestMethod: HttpMethod,
     val allowedMethods: Set<HttpMethod>
