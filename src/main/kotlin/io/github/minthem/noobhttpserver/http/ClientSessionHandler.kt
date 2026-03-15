@@ -1,5 +1,6 @@
 package io.github.minthem.noobhttpserver.http
 
+import io.github.minthem.noobhttpserver.config.TimeoutConfig
 import io.github.minthem.noobhttpserver.exception.HttpResponseException
 import io.github.minthem.noobhttpserver.io.ByteChannelReadStream
 import io.github.minthem.noobhttpserver.io.TimeoutByteChannel
@@ -12,23 +13,24 @@ internal class ClientSessionHandler(
     private val handler: RequestHandler,
     private val writer: HttpResponseWriter,
     private val keepAliveStrategy: KeepAliveStrategy,
-    private val timeoutExecutor: TimeoutExecutor
+    private val timeoutExecutor: TimeoutExecutor,
+    private val timeoutConfig: TimeoutConfig,
+    private val requestBufferSize: Int,
 ) {
     fun handle(socket: ByteChannel) {
         println("--------------- Start new session. ---------------")
-        val buffer = ByteBuffer.allocate(8192)
+        val buffer = ByteBuffer.allocate(requestBufferSize)
         buffer.flip()
         val channel = TimeoutByteChannel(
             socket, timeoutExecutor,
-            30000, // TODO Parameterize
-            30000, // TODO Parameterize
+            timeoutConfig.readMillis, timeoutConfig.writeMillis
         )
         val stream = ByteChannelReadStream(channel, buffer)
 
         try {
             var isKeepAlive: Boolean
-            session@while (true) {
-                isKeepAlive = timeoutExecutor.run(120000) { // TODO Parameterize
+            session@ while (true) {
+                isKeepAlive = timeoutExecutor.run(timeoutConfig.sessionMillis) {
                     val result = handler.process(stream)
                     val request = result.request
                     val response = result.response
@@ -40,7 +42,7 @@ internal class ClientSessionHandler(
                     )
                 }
 
-                if(isKeepAlive) {
+                if (isKeepAlive) {
                     println("Keep-Alive session, reuse connection.")
                 } else {
                     println("Close session.")

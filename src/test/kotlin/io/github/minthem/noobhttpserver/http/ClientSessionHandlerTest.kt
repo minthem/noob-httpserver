@@ -1,5 +1,7 @@
 package io.github.minthem.noobhttpserver.http
 
+import io.github.minthem.noobhttpserver.config.HttpLimitsConfig
+import io.github.minthem.noobhttpserver.config.ServerConfig
 import io.github.minthem.noobhttpserver.io.TimeoutExecutor
 import io.github.minthem.noobhttpserver.router.Router
 import io.github.minthem.noobhttpserver.router.RouterRegistry
@@ -11,7 +13,13 @@ import kotlin.test.assertTrue
 
 class ClientSessionHandlerTest {
 
+    private val config = ServerConfig()
     private val timeoutExecutor = TimeoutExecutor(Executors.newSingleThreadScheduledExecutor())
+    private val requestParser = HttpRequestParser(
+        HttpHeadersParser(config.httpLimits),
+        config.httpLimits
+    )
+    private val responseWriter = HttpResponseWriter(config.buffers.responseHeaderBytes)
 
     @Test
     fun `handle writes single response and closes session when keep alive is false`() {
@@ -30,10 +38,12 @@ class ClientSessionHandlerTest {
         }
 
         val sessionHandler = ClientSessionHandler(
-            handler = RequestHandler(HttpRequestParser(), RouteResolver(registry)),
-            writer = HttpResponseWriter,
+            handler = RequestHandler(requestParser, RouteResolver(registry)),
+            writer = responseWriter,
             keepAliveStrategy = KeepAliveStrategy,
-            timeoutExecutor = timeoutExecutor
+            timeoutExecutor = timeoutExecutor,
+            timeoutConfig = config.timeouts,
+            requestBufferSize = config.buffers.requestBytes,
         )
 
         val channel = InMemoryByteChannel.fromStrings(
@@ -75,10 +85,12 @@ class ClientSessionHandlerTest {
         }
 
         val sessionHandler = ClientSessionHandler(
-            handler = RequestHandler(HttpRequestParser(), RouteResolver(registry)),
-            writer = HttpResponseWriter,
+            handler = RequestHandler(requestParser, RouteResolver(registry)),
+            writer = responseWriter,
             keepAliveStrategy = KeepAliveStrategy,
-            timeoutExecutor = timeoutExecutor
+            timeoutExecutor = timeoutExecutor,
+            timeoutConfig = config.timeouts,
+            requestBufferSize = config.buffers.requestBytes,
         )
 
         val channel = InMemoryByteChannel.fromStrings(
@@ -104,10 +116,12 @@ class ClientSessionHandlerTest {
     fun `handle writes parser error response when request is invalid`() {
         val registry = RouterRegistry()
         val sessionHandler = ClientSessionHandler(
-            handler = RequestHandler(HttpRequestParser(), RouteResolver(registry)),
-            writer = HttpResponseWriter,
+            handler = RequestHandler(requestParser, RouteResolver(registry)),
+            writer = responseWriter,
             keepAliveStrategy = KeepAliveStrategy,
-            timeoutExecutor = timeoutExecutor
+            timeoutExecutor = timeoutExecutor,
+            timeoutConfig = config.timeouts,
+            requestBufferSize = config.buffers.requestBytes,
         )
 
         val channel = InMemoryByteChannel.fromStrings(
@@ -138,10 +152,12 @@ class ClientSessionHandlerTest {
         }
 
         val sessionHandler = ClientSessionHandler(
-            handler = RequestHandler(HttpRequestParser(), RouteResolver(registry)),
-            writer = HttpResponseWriter,
+            handler = RequestHandler(requestParser, RouteResolver(registry)),
+            writer = responseWriter,
             keepAliveStrategy = KeepAliveStrategy,
-            timeoutExecutor = timeoutExecutor
+            timeoutExecutor = timeoutExecutor,
+            timeoutConfig = config.timeouts,
+            requestBufferSize = config.buffers.requestBytes,
         )
 
         val channel = InMemoryByteChannel.fromStrings(
