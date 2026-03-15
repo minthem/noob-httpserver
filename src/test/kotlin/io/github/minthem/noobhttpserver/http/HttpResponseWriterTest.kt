@@ -1,5 +1,6 @@
 package io.github.minthem.noobhttpserver.http
 
+import io.github.minthem.noobhttpserver.config.BufferConfig
 import io.github.minthem.noobhttpserver.testutils.ByteArrayWritableChannel
 import io.github.minthem.noobhttpserver.testutils.SideEffectWritableChannel
 import java.io.IOException
@@ -13,7 +14,8 @@ import kotlin.test.assertTrue
 
 class HttpResponseWriterTest {
 
-    private val writer = HttpResponseWriter
+    private val config = BufferConfig()
+    private val writer = HttpResponseWriter(config.responseHeaderBytes)
 
     @Test
     fun `writes 200 response without body`() {

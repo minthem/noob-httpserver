@@ -7,21 +7,18 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 
-internal object HttpResponseWriter {
-
-    private val CRLF = "\r\n".toByteArray()
-    private val SPACE = " ".toByteArray()
-    private val FIELD_SEPARATOR = ": ".toByteArray()
-
-    private val FIELD_DATE_FORMATTER = DateTimeFormatter.RFC_1123_DATE_TIME
-
+internal class HttpResponseWriter(
+    private val responseHeaderBufferSize: Int
+) {
     fun write(
         writeChannel: WritableByteChannel,
         protocol: HttpProtocol,
         httpResponse: HttpResponse,
         now: ZonedDateTime = ZonedDateTime.now(ZoneId.of("UTC"))
     ) {
-        ByteWriter(writeChannel).use {
+        val buffer = ByteBuffer.allocate(responseHeaderBufferSize)
+
+        ByteWriter(writeChannel, buffer).use {
             it.write(protocol.version())
             it.write(SPACE)
             it.write(httpResponse.status.code.toString())
@@ -49,11 +46,18 @@ internal object HttpResponseWriter {
         httpResponse.body.writeTo(writeChannel)
     }
 
+    companion object {
+        private val CRLF = "\r\n".toByteArray()
+        private val SPACE = " ".toByteArray()
+        private val FIELD_SEPARATOR = ": ".toByteArray()
+
+        private val FIELD_DATE_FORMATTER = DateTimeFormatter.RFC_1123_DATE_TIME
+    }
 }
 
 private class ByteWriter(
     private val writeChannel: WritableByteChannel,
-    private val buffer: ByteBuffer = ByteBuffer.allocate(2048) // TODO Parameterize
+    private val buffer: ByteBuffer
 ) : AutoCloseable {
 
     init {
