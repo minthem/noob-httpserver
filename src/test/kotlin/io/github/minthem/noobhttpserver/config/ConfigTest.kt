@@ -149,7 +149,7 @@ class ConfigTest {
         fun `creates http limits config with default values`() {
             val actual = HttpLimitsConfig()
 
-            assertEquals(8 * 1024, actual.maxRequestLineBytes)
+            assertEquals(8 * 1024, actual.maxRequestTargetBytes)
             assertEquals(16 * 1024, actual.maxHeaderSectionBytes)
             assertEquals(256, actual.maxHeaderNameBytes)
             assertEquals(8 * 1024, actual.maxHeaderValueBytes)
@@ -159,10 +159,10 @@ class ConfigTest {
         @Test
         fun `throws when max request line bytes is zero`() {
             val actual = assertFailsWith<IllegalArgumentException> {
-                HttpLimitsConfig(maxRequestLineBytes = 0)
+                HttpLimitsConfig(maxRequestTargetBytes = 0)
             }
 
-            assertEquals("Max request line bytes must be positive", actual.message)
+            assertEquals("Max request target bytes must be positive", actual.message)
         }
 
         @Test
@@ -204,10 +204,10 @@ class ConfigTest {
         @Test
         fun `throws when max request line bytes is negative`() {
             val actual = assertFailsWith<IllegalArgumentException> {
-                HttpLimitsConfig(maxRequestLineBytes = -1)
+                HttpLimitsConfig(maxRequestTargetBytes = -1)
             }
 
-            assertEquals("Max request line bytes must be positive", actual.message)
+            assertEquals("Max request target bytes must be positive", actual.message)
         }
 
         @Test
