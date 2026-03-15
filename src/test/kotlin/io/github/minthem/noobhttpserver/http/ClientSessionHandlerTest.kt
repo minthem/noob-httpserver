@@ -1,6 +1,5 @@
 package io.github.minthem.noobhttpserver.http
 
-import io.github.minthem.noobhttpserver.config.HttpLimitsConfig
 import io.github.minthem.noobhttpserver.config.ServerConfig
 import io.github.minthem.noobhttpserver.io.TimeoutExecutor
 import io.github.minthem.noobhttpserver.router.Router
