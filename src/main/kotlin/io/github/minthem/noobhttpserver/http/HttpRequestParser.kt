@@ -1,7 +1,6 @@
 package io.github.minthem.noobhttpserver.http
 
 import io.github.minthem.noobhttpserver.exception.BadRequestException
-import io.github.minthem.noobhttpserver.exception.HttpResponseException
 import io.github.minthem.noobhttpserver.io.BodySourceInputStream
 import io.github.minthem.noobhttpserver.io.ByteReadStream
 import java.io.EOFException
