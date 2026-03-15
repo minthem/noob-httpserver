@@ -13,8 +13,8 @@ open class HttpResponseException(
 
 
 internal class MethodNotAllowException(
-    requestMethod: HttpMethod,
-    allowedMethods: Set<HttpMethod>
+    val requestMethod: HttpMethod,
+    val allowedMethods: Set<HttpMethod>
 ) : HttpResponseException(
     message = "Method $requestMethod is not allowed. Allowed methods: $allowedMethods",
     httpResponse = HttpResponse.build {
@@ -24,8 +24,8 @@ internal class MethodNotAllowException(
 )
 
 internal class RouteNotFoundException(
-    method: HttpMethod,
-    requestTarget: RequestTarget
+    val method: HttpMethod,
+    val requestTarget: RequestTarget
 ) : HttpResponseException(
     message = "No route found for $method $requestTarget",
     httpResponse = HttpResponse.build {
