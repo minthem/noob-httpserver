@@ -1,5 +1,6 @@
 package io.github.minthem.noobhttpserver.http
 
+import io.github.minthem.noobhttpserver.config.ServerConfig
 import io.github.minthem.noobhttpserver.exception.HttpResponseException
 import io.github.minthem.noobhttpserver.io.ByteChannelReadStream
 import io.github.minthem.noobhttpserver.router.Router
@@ -11,6 +12,12 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
 class RequestHandlerTest {
+
+    private val config = ServerConfig()
+    private val requestParser = HttpRequestParser(
+        HttpHeadersParser(config.httpLimits),
+        config.httpLimits
+    )
 
     @Test
     fun `process returns request and response when route handler succeeds`() {
@@ -27,7 +34,7 @@ class RequestHandlerTest {
             )
         }
         val handler = RequestHandler(
-            parser = HttpRequestParser(),
+            parser = requestParser,
             routeResolver = RouteResolver(registry)
         )
         val stream = ByteChannelReadStream(
@@ -53,7 +60,7 @@ class RequestHandlerTest {
     fun `process returns error response when route resolver throws HttpResponseException`() {
         val registry = RouterRegistry()
         val handler = RequestHandler(
-            parser = HttpRequestParser(),
+            parser = requestParser,
             routeResolver = RouteResolver(registry)
         )
         val stream = ByteChannelReadStream(
@@ -93,7 +100,7 @@ class RequestHandlerTest {
             )
         }
         val handler = RequestHandler(
-            parser = HttpRequestParser(),
+            parser = requestParser,
             routeResolver = RouteResolver(registry)
         )
         val stream = ByteChannelReadStream(
@@ -127,7 +134,7 @@ class RequestHandlerTest {
             )
         }
         val handler = RequestHandler(
-            parser = HttpRequestParser(),
+            parser = requestParser,
             routeResolver = RouteResolver(registry)
         )
         val stream = ByteChannelReadStream(
@@ -152,7 +159,7 @@ class RequestHandlerTest {
     fun `process rethrows parser HttpResponseException when parsing fails`() {
         val registry = RouterRegistry()
         val handler = RequestHandler(
-            parser = HttpRequestParser(),
+            parser = requestParser,
             routeResolver = RouteResolver(registry)
         )
         val stream = ByteChannelReadStream(
