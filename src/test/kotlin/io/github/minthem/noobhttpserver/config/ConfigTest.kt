@@ -275,4 +275,52 @@ class ConfigTest {
             assertEquals("Memory threshold must be positive", actual.message)
         }
     }
+
+    @Nested
+    inner class KeepAliveConfigTest {
+        @Test
+        fun `creates keep alive config with default values`() {
+            val actual = KeepAliveConfig()
+
+            assertEquals(true, actual.enabled)
+            assertEquals(3000L, actual.idleTimeoutMillis)
+            assertEquals(100, actual.maxRequests)
+        }
+
+        @Test
+        fun `throws when idle timeout is zero`() {
+            val actual = assertFailsWith<IllegalArgumentException> {
+                KeepAliveConfig(idleTimeoutMillis = 0)
+            }
+
+            assertEquals("Idle timeout must be positive", actual.message)
+        }
+
+        @Test
+        fun `throws when idle timeout is negative`() {
+            val actual = assertFailsWith<IllegalArgumentException> {
+                KeepAliveConfig(idleTimeoutMillis = -1)
+            }
+
+            assertEquals("Idle timeout must be positive", actual.message)
+        }
+
+        @Test
+        fun `throws when max requests is zero`() {
+            val actual = assertFailsWith<IllegalArgumentException> {
+                KeepAliveConfig(maxRequests = 0)
+            }
+
+            assertEquals("Max requests must be positive", actual.message)
+        }
+
+        @Test
+        fun `throws when max requests is negative`() {
+            val actual = assertFailsWith<IllegalArgumentException> {
+                KeepAliveConfig(maxRequests = -1)
+            }
+
+            assertEquals("Max requests must be positive", actual.message)
+        }
+    }
 }
