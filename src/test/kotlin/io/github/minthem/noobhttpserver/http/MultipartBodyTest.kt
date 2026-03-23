@@ -8,6 +8,7 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 import java.io.ByteArrayInputStream
 import java.nio.file.Files
+import kotlin.test.assertContentEquals
 
 internal class MultipartBodyTest {
 
@@ -350,5 +351,62 @@ internal class MultipartBodyTest {
         body.part("part1")
         body.close()
         body.close() // idempotent-ish behavior should not throw
+    }
+
+
+    @Test
+    fun `何度でもstreamは再利用可能`() {
+        val input = """
+            --boundary
+            Content-Disposition: form-data; name="file"; filename="hello.txt"
+            Content-Type: text/plain
+
+            hello file
+            --boundary--
+        """.trimIndent().replace("\n", "\r\n").toByteArray()
+
+        val body = MultipartBody(
+            stream = ByteArrayInputStream(input),
+            boundary = "boundary"
+        )
+
+        val part = body.part("file")
+        assertNotNull(part)
+        assertTrue(part is Multipart.FileUpload)
+        val st1 = part.asStream()
+        val st2 = part.asStream()
+
+        assertContentEquals(st1.readBytes(),st2.readBytes())
+
+        body.close()
+    }
+
+    @Test
+    fun `何度でもstreamは再利用可能 large file`() {
+        val largeContent = "a".repeat(1024 * 1024 + 1)
+        val input = """
+            --boundary
+            Content-Disposition: form-data; name="file"; filename="large.txt"
+            Content-Type: text/plain
+
+            $largeContent
+            --boundary--
+        """.trimIndent().replace("\n", "\r\n").toByteArray()
+
+        val body = MultipartBody(
+            stream = ByteArrayInputStream(input),
+            boundary = "boundary"
+        )
+
+
+        val part = body.part("file")
+        assertNotNull(part)
+        assertTrue(part is Multipart.FileUpload)
+        val st1 = part.asStream()
+        val st2 = part.asStream()
+
+        assertContentEquals(st1.readBytes(),st2.readBytes())
+
+        body.close()
     }
 }

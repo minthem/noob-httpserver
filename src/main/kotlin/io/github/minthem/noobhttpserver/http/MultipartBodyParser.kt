@@ -41,16 +41,16 @@ internal class MultipartBodyParser(
             ?: throw IllegalArgumentException("Invalid Content-Disposition header")
 
         // TODO Pair戻しがブサイク, いずれ直す
-        val (bodyStream, path) = outputPartBody()
+        val (streamSupplier, path) = outputPartBody()
 
         val filename = disposition.filename
         val name = disposition.name ?: throw IllegalArgumentException("Invalid Content-Disposition header")
         val charset = headers.contentType?.charset ?: Charsets.UTF_8
 
         return if (filename == null) {
-            Multipart.FormField(name, headers, String(bodyStream.readBytes(), charset))
+            Multipart.FormField(name, headers, String(streamSupplier().readBytes(), charset))
         } else {
-            Multipart.FileUpload(name, headers, filename, path, { bodyStream })
+            Multipart.FileUpload(name, headers, filename, path, streamSupplier)
         }
     }
 
@@ -78,7 +78,7 @@ internal class MultipartBodyParser(
         return headers.toImmutable()
     }
 
-    private fun outputPartBody(): Pair<InputStream, Path?> {
+    private fun outputPartBody(): Pair<() -> InputStream, Path?> {
         val memoryLen = 1 * 1024 * 1024 // TODO parameterized
         val memory = ByteArrayOutputStream(memoryLen)
         var dst: OutputStream = memory
@@ -121,13 +121,14 @@ internal class MultipartBodyParser(
             dst.close()
         }
 
-        val stream = outputFile?.let {
-            Files.newInputStream(it)
-        } ?: ByteArrayInputStream(
-            (dst as ByteArrayOutputStream).toByteArray()
-        )
+        val streamSupplier = outputFile?.let {
+            { Files.newInputStream(it) }
+        } ?: {
+            val barr = (dst as ByteArrayOutputStream).toByteArray()
+            ByteArrayInputStream(barr)
+        }
 
-        return stream to outputFile
+        return streamSupplier to outputFile
     }
 
     private fun consumeBoundary() {
