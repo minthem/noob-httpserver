@@ -18,7 +18,7 @@ sealed class Multipart(
         name: String,
         headers: HttpHeaders,
         val filename: String,
-        val file: Path?,
+        internal val file: Path?,
         private val provider: () -> InputStream,
     ) : Multipart(name, headers) {
 
