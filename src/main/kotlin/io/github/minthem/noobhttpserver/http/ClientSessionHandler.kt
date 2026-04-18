@@ -12,17 +12,18 @@ import java.nio.channels.ByteChannel
 internal class ClientSessionHandler(
     private val handler: RequestHandler,
     private val writer: HttpResponseWriter,
-    private val keepAliveStrategy: KeepAliveStrategy,
+    private val keepAliveManager: KeepAliveManager,
     private val timeoutExecutor: TimeoutExecutor,
     private val timeoutConfig: TimeoutConfig,
     private val requestBufferSize: Int,
 ) {
-    fun handle(socket: ByteChannel) {
+    fun handle(context: ConnectionContext) {
         println("--------------- Start new session. ---------------")
+        val socket = context.channel
         val buffer = ByteBuffer.allocate(requestBufferSize)
         buffer.flip()
         val channel = TimeoutByteChannel(
-            socket, timeoutExecutor,
+            context.channel, timeoutExecutor,
             timeoutConfig.readMillis, timeoutConfig.writeMillis
         )
         val stream = ByteChannelReadStream(channel, buffer)
@@ -37,16 +38,35 @@ internal class ClientSessionHandler(
 
                     writer.write(channel, request.protocol, response)
 
-                    keepAliveStrategy.shouldKeepAlive(
-                        request, response
+                    keepAliveManager.shouldKeepAlive(
+                        request, response, context
                     )
                 }
 
-                if (isKeepAlive) {
-                    println("Keep-Alive session, reuse connection.")
-                } else {
-                    println("Close session.")
+                if (!isKeepAlive) {
+                    println("Close connection.")
                     break@session
+                }
+
+                // KeepAliveで次のパケットが来るまで待機
+                when (val waitResult = keepAliveManager.waitForNextRequest(stream)) {
+                    WaitResult.Ready -> {
+                        println("Keep-Alive session, reuse connection.")
+                        context.reuse()
+                        continue@session
+                    }
+                    WaitResult.Eof -> {
+                        println("Client closed connection.")
+                        break@session
+                    }
+                    WaitResult.Timeout -> {
+                        println("Timeout. Close connection.")
+                        break@session
+                    }
+                    is WaitResult.Error -> {
+                        println("Unexpected error: ${waitResult.cause}")
+                        break@session
+                    }
                 }
             }
         } catch (e: IllegalStateException) {

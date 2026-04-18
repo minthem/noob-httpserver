@@ -28,11 +28,11 @@ class NoobHttpServer(
                     while (true) {
                         try {
                             val clientSocket = serverChannel.accept()
-                            println(clientSocket.remoteAddress)
 
                             executor.submit {
                                 clientSocket.use { socket ->
-                                    sessionHandler.handle(socket)
+                                    val context = ConnectionContext.create(socket)
+                                    sessionHandler.handle(context)
                                 }
                             }
                         } catch (e: Exception) {
@@ -57,12 +57,12 @@ class NoobHttpServer(
         val requestParser = HttpRequestParser(headerParser, config.httpLimits)
         val requestHandler = RequestHandler(requestParser, routeResolver)
         val writer = HttpResponseWriter(config.buffers.responseHeaderBytes)
-        val keepAliveStrategy = KeepAliveStrategy
+        val keepAliveManager = KeepAliveManager(timeoutExecutor, config.keepAlive)
 
         return ClientSessionHandler(
             handler = requestHandler,
             writer = writer,
-            keepAliveStrategy = keepAliveStrategy,
+            keepAliveManager = keepAliveManager,
             timeoutExecutor = timeoutExecutor,
             timeoutConfig = config.timeouts,
             requestBufferSize = config.buffers.requestBytes,

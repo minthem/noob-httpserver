@@ -5,7 +5,8 @@ data class ServerConfig(
     val timeouts: TimeoutConfig = TimeoutConfig(),
     val buffers: BufferConfig = BufferConfig(),
     val httpLimits: HttpLimitsConfig = HttpLimitsConfig(),
-    val multipart: MultipartConfig = MultipartConfig()
+    val multipart: MultipartConfig = MultipartConfig(),
+    val keepAlive: KeepAliveConfig = KeepAliveConfig(),
 ) {
     init {
         require(port in 1u..65535u) { "Port must be positive and within valid range" }
