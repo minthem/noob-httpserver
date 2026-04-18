@@ -8,6 +8,7 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 import java.io.ByteArrayInputStream
 import java.nio.file.Files
+import kotlin.test.assertContentEquals
 
 internal class MultipartBodyTest {
 
@@ -319,21 +320,21 @@ internal class MultipartBodyTest {
         val part = body.part("file")
         assertNotNull(part)
         assertTrue(part is Multipart.FileUpload)
-        assertNotNull(part.file)
-        assertTrue(Files.exists(part.file))
-        val fileContent = Files.readString(part.file)
-        assertEquals(largeContent,fileContent )
+        assertNotNull(part.savePath)
+        assertTrue(Files.exists(part.savePath))
+        val fileContent = Files.readString(part.savePath)
+        assertEquals(largeContent, fileContent)
         val streamContent = String(part.asStream().readBytes())
-        assertEquals(largeContent,streamContent)
+        assertEquals(largeContent, streamContent)
 
         body.close()
 
-        assertTrue(Files.notExists(part.file))
+        assertTrue(Files.notExists(part.savePath))
         assertNull(body.part("file"))
     }
 
     @Test
-    fun `test close should be safe when no file upload parts were read`() {
+    fun `test close is safe when no file upload parts were read`() {
         val input = """
             --boundary
             Content-Disposition: form-data; name="part1"
@@ -350,5 +351,171 @@ internal class MultipartBodyTest {
         body.part("part1")
         body.close()
         body.close() // idempotent-ish behavior should not throw
+    }
+
+    @Test
+    fun `test file upload stream can be reused multiple times`() {
+        val input = """
+            --boundary
+            Content-Disposition: form-data; name="file"; filename="hello.txt"
+            Content-Type: text/plain
+
+            hello file
+            --boundary--
+        """.trimIndent().replace("\n", "\r\n").toByteArray()
+
+        val body = MultipartBody(
+            stream = ByteArrayInputStream(input),
+            boundary = "boundary"
+        )
+
+        val part = body.part("file")
+        assertNotNull(part)
+        assertTrue(part is Multipart.FileUpload)
+        val st1 = part.asStream()
+        val st2 = part.asStream()
+
+        assertContentEquals(st1.readBytes(), st2.readBytes())
+
+        body.close()
+    }
+
+    @Test
+    fun `test large file upload stream can be reused multiple times`() {
+        val largeContent = "a".repeat(1024 * 1024 + 1)
+        val input = """
+            --boundary
+            Content-Disposition: form-data; name="file"; filename="large.txt"
+            Content-Type: text/plain
+
+            $largeContent
+            --boundary--
+        """.trimIndent().replace("\n", "\r\n").toByteArray()
+
+        val body = MultipartBody(
+            stream = ByteArrayInputStream(input),
+            boundary = "boundary"
+        )
+
+        val part = body.part("file")
+        assertNotNull(part)
+        assertTrue(part is Multipart.FileUpload)
+        val st1 = part.asStream()
+        val st2 = part.asStream()
+
+        assertContentEquals(st1.readBytes(), st2.readBytes())
+
+        body.close()
+    }
+
+    @Test
+    fun `copyTo copies file contents correctly`() {
+        val input = """
+            --boundary
+            Content-Disposition: form-data; name="file"; filename="hello.txt"
+            Content-Type: text/plain
+
+            hello file
+            --boundary--
+        """.trimIndent().replace("\n", "\r\n").toByteArray()
+
+        val body = MultipartBody(
+            stream = ByteArrayInputStream(input),
+            boundary = "boundary"
+        )
+
+        val part = body.part("file")
+        assertNotNull(part)
+        assertTrue(part is Multipart.FileUpload)
+        val tempFile = Files.createTempFile("multipart-test", ".txt")
+
+        part.copyTo(tempFile)
+
+        val actual = Files.readString(tempFile)
+        assertEquals("hello file", actual)
+    }
+
+    @Test
+    fun `copyTo overwrites existing file contents`() {
+        val content = "original content"
+        val input = """
+            --boundary
+            Content-Disposition: form-data; name="file"; filename="hello.txt"
+            Content-Type: text/plain
+        
+            $content
+            --boundary--
+        """.trimIndent().replace("\n", "\r\n").toByteArray()
+
+        val body = MultipartBody(
+            stream = ByteArrayInputStream(input),
+            boundary = "boundary"
+        )
+
+        val part = body.part("file")
+        assertNotNull(part)
+        assertTrue(part is Multipart.FileUpload)
+
+        val tempFile = Files.createTempFile("multipart-test", ".txt")
+        Files.writeString(tempFile, "existing content, should be overwritten")
+
+        part.copyTo(tempFile)
+
+        val actual = Files.readString(tempFile)
+        assertEquals(content, actual)
+    }
+
+    @Test
+    fun `large form field across buffer boundary is parsed correctly`() {
+        val largeContent = "a".repeat(4096 * 2 + 123)
+        val input = """
+            --boundary
+            Content-Disposition: form-data; name="message"
+            Content-Type: text/plain
+        
+            $largeContent
+            --boundary--
+        """.trimIndent().replace("\n", "\r\n").toByteArray()
+
+        val body = MultipartBody(
+            stream = ByteArrayInputStream(input),
+            boundary = "boundary"
+        )
+
+        val part = body.part("message")
+
+        assertNotNull(part)
+        assertTrue(part is Multipart.FormField)
+        assertEquals("message", part.name)
+        assertEquals(largeContent, part.value)
+    }
+
+    @Test
+    fun `large file upload across buffer boundary can be copied correctly`() {
+        val largeContent = "b".repeat(4096 * 2 + 123)
+        val input = """
+            --boundary
+            Content-Disposition: form-data; name="file"; filename="large.txt"
+            Content-Type: text/plain
+        
+            $largeContent
+            --boundary--
+        """.trimIndent().replace("\n", "\r\n").toByteArray()
+
+        val body = MultipartBody(
+            stream = ByteArrayInputStream(input),
+            boundary = "boundary"
+        )
+
+        val part = body.part("file")
+
+        assertNotNull(part)
+        assertTrue(part is Multipart.FileUpload)
+
+        val tempFile = Files.createTempFile("multipart-test-large", ".txt")
+        part.copyTo(tempFile)
+
+        val actual = Files.readString(tempFile)
+        assertEquals(largeContent, actual)
     }
 }
