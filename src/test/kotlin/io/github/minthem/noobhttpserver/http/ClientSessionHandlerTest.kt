@@ -115,9 +115,8 @@ class ClientSessionHandlerTest {
         assertTrue(actual.contains("\r\n\r\nbye"))
     }
 
-
     @Test
-    fun `キープアライブだが、後続のデータがない`() {
+    fun `handle processes request but stops when no subsequent data arrives despite keep alive`() {
         val registry = RouterRegistry().also {
             it.register(
                 Router {
@@ -167,7 +166,7 @@ class ClientSessionHandlerTest {
     }
 
     @Test
-    fun `キープアライブの上限に到達`() {
+    fun `handle closes session when keep alive limit is reached`() {
         val registry = RouterRegistry().also {
             it.register(
                 Router {

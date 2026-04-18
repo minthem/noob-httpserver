@@ -29,7 +29,7 @@ class KeepAliveManagerTest {
     @Nested
     inner class ShouldKeepAliveTest {
         @Test
-        fun `KeepAliveが有効な設定だったらtrue`() {
+        fun `should return true when keep alive config is enabled`() {
             val request = request(HttpProtocol.HTTP_1_1)
             val response = response()
             val context = context()
@@ -41,7 +41,7 @@ class KeepAliveManagerTest {
         }
 
         @Test
-        fun `KeepAliveが無効な設定だったらfalse`() {
+        fun `should return false when keep alive config is disabled`() {
             val request = request(HttpProtocol.HTTP_1_1)
             val response = response()
             val context = context()
@@ -53,7 +53,7 @@ class KeepAliveManagerTest {
         }
 
         @Test
-        fun `回数がしきい値を超えていなかったらtrue`() {
+        fun `should return true when reuse count is below threshold`() {
             val request = request(HttpProtocol.HTTP_1_1)
             val response = response()
             val context = context(100u)
@@ -64,7 +64,7 @@ class KeepAliveManagerTest {
         }
 
         @Test
-        fun `回数がしきい値を越えたらfalse`() {
+        fun `should return false when reuse count exceeds threshold`() {
             val request = request(HttpProtocol.HTTP_1_1)
             val response = response()
             val context = context(101u)
@@ -75,7 +75,7 @@ class KeepAliveManagerTest {
         }
 
         @Test
-        fun `回数がしきい値を越えたらfalse(デフォルト以外)`() {
+        fun `should return false when reuse count exceeds custom threshold`() {
             val request = request(HttpProtocol.HTTP_1_1)
             val response = response()
             val context = context(1001u)
@@ -226,7 +226,7 @@ class KeepAliveManagerTest {
     @Nested
     inner class WaitForNextRequestTest {
         @Test
-        fun `データが来たらReady`() {
+        fun `should return Ready when data arrives`() {
             val channel = FixedReadableByteChannel.fromStrings(listOf("G"))
             val stream = ByteChannelReadStream(channel, buffer())
 
@@ -235,7 +235,7 @@ class KeepAliveManagerTest {
         }
 
         @Test
-        fun `データが来なかったらEof`() {
+        fun `should return Eof when no data arrives`() {
             val channel = FixedReadableByteChannel.fromStrings(listOf())
             val stream = ByteChannelReadStream(channel, buffer())
 
@@ -244,7 +244,7 @@ class KeepAliveManagerTest {
         }
 
         @Test
-        fun `タイムアウトしたらTimeout`() {
+        fun `should return Timeout when timeout occurs`() {
             val channel = SideEffectReadableChannel {
                 throw TimeoutException()
             }
@@ -255,7 +255,7 @@ class KeepAliveManagerTest {
         }
 
         @Test
-        fun `エラーが起きたらError`() {
+        fun `should return Error when exception occurs`() {
             val error = Exception("error")
             val channel = SideEffectReadableChannel {
                 throw error
