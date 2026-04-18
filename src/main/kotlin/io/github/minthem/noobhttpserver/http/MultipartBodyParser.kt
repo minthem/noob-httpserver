@@ -1,17 +1,27 @@
 package io.github.minthem.noobhttpserver.http
 
-import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import java.io.OutputStream
 import java.nio.ByteBuffer
 import java.nio.channels.Channels
 import java.nio.file.Files
-import java.nio.file.Path
 import java.nio.file.StandardOpenOption
 import kotlin.io.path.outputStream
 
 
+/**
+ * Parses multipart body content from an input stream, handling headers and boundaries.
+ *
+ * This class is responsible for processing multipart data streams, identifying
+ * individual parts, and separating them into form fields or file uploads. It is
+ * designed to work with HTTP multipart requests, such as those used in file uploads
+ * or form submissions.
+ *
+ * @constructor
+ * @param stream The input stream to read the multipart data from.
+ * @param boundary The boundary string used to separate parts in the multipart content.
+ */
 internal class MultipartBodyParser(
     private val stream: InputStream,
     private val boundary: String
@@ -23,6 +33,23 @@ internal class MultipartBodyParser(
     private val buffer = ByteBuffer.allocate(4096).flip()
     private var exhausted = false
 
+    /**
+     * Parses and retrieves the next part from the multipart body.
+     *
+     * This method processes the multipart stream, consuming the boundary and extracting headers and content
+     * for the next part. It supports both form fields and file uploads:
+     * - If the part represents a form field, a `Multipart.FormField` instance is returned.
+     * - If the part represents a file upload, a `Multipart.FileUpload` instance is returned, with the file
+     *   temporarily stored in the filesystem.
+     *
+     * If the end of the multipart body is reached, the method consumes the remaining body content and
+     * returns `null`.
+     *
+     * @return The next parsed `Multipart` part, either a form field or file upload; or `null` if the body
+     *         is fully consumed.
+     * @throws IllegalArgumentException If the part does not contain a valid `Content-Disposition` header
+     *         or if the header is invalid.
+     */
     fun nextPart(): Multipart? {
         consumeBoundary()
         if (exhausted) {
@@ -40,17 +67,20 @@ internal class MultipartBodyParser(
         val disposition = headers.contentDisposition
             ?: throw IllegalArgumentException("Invalid Content-Disposition header")
 
-        // TODO Pair戻しがブサイク, いずれ直す
-        val (streamSupplier, path) = outputPartBody()
-
         val filename = disposition.filename
         val name = disposition.name ?: throw IllegalArgumentException("Invalid Content-Disposition header")
         val charset = headers.contentType?.charset ?: Charsets.UTF_8
 
         return if (filename == null) {
-            Multipart.FormField(name, headers, String(streamSupplier().readBytes(), charset))
+            val output = ByteArrayOutputStream()
+            outputPartBody(output)
+            Multipart.FormField(name, headers, output.toString(charset))
         } else {
-            Multipart.FileUpload(name, headers, filename, path, streamSupplier)
+            val path = Files.createTempFile("noobhttpserver", "part")
+            path.outputStream(StandardOpenOption.WRITE, StandardOpenOption.CREATE).use { output ->
+                outputPartBody(output)
+            }
+            Multipart.FileUpload(name, headers, filename, path)
         }
     }
 
@@ -78,57 +108,35 @@ internal class MultipartBodyParser(
         return headers.toImmutable()
     }
 
-    private fun outputPartBody(): Pair<() -> InputStream, Path?> {
-        val memoryLen = 1 * 1024 * 1024 // TODO parameterized
-        val memory = ByteArrayOutputStream(memoryLen)
-        var dst: OutputStream = memory
-        var findBoundary = false
-        var bodySize = 0L
-        var outputFile: Path? = null
+    private fun outputPartBody(output: OutputStream) {
+        val writeBuffer = ByteArray(1024 * 10) // TODO Parameterized
+        var writeBufferUsed = 0
 
-        try {
-            while (!findBoundary) {
-                val index = findByteSequence(boundaryEnd)
-                val len = if (index == -1) {
-                    // boundaryがバッファ内にまだ無い
-                    // 読み込み済みデータ - boundaryサイズ分だけ後でreadする
-                    val readLen = maxOf(buffer.remaining() - boundaryEnd.size, 0)
-                    // 補充
-                    refillBuffer()
-                    readLen
-                } else {
-                    findBoundary = true
-                    index - buffer.position()
-                }
-                bodySize += len
-                val b = ByteArray(len)
-                buffer.get(b, 0, len)
-
-                if (outputFile == null && bodySize > memoryLen) {
-                    outputFile = Files.createTempFile("noobhttpserver", ".part")
-                    dst = outputFile.outputStream(
-                        StandardOpenOption.WRITE,
-                        StandardOpenOption.CREATE,
-                        StandardOpenOption.APPEND
-                    )
-
-                    // 取り込み済みデータをファイルに書き込み
-                    memory.writeTo(dst)
-                }
-                dst.write(b)
+        while(true) {
+            val boundaryIndex = findByteSequence(boundaryEnd)
+            val bytesToRead = if (boundaryIndex == -1) {
+                // boundaryがバッファ内にまだ無い
+                // 読み込み済みデータ - boundaryサイズ分だけ後でreadする
+                val readLen = maxOf(buffer.remaining() - boundaryEnd.size, 0)
+                // 補充
+                refillBuffer()
+                readLen
+            } else {
+                boundaryIndex - buffer.position()
             }
-        } finally {
-            dst.close()
+
+            if(writeBuffer.size < writeBufferUsed + bytesToRead) {
+                output.write(writeBuffer, 0, writeBufferUsed)
+                writeBufferUsed = 0
+            }
+
+            buffer.get(writeBuffer, writeBufferUsed, bytesToRead)
+            writeBufferUsed += bytesToRead
+
+            if (boundaryIndex != -1) break
         }
 
-        val streamSupplier = outputFile?.let {
-            { Files.newInputStream(it) }
-        } ?: {
-            val barr = (dst as ByteArrayOutputStream).toByteArray()
-            ByteArrayInputStream(barr)
-        }
-
-        return streamSupplier to outputFile
+        output.write(writeBuffer, 0, writeBufferUsed)
     }
 
     private fun consumeBoundary() {
