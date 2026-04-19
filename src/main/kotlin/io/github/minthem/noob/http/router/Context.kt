@@ -5,6 +5,7 @@ import io.github.minthem.noob.http.message.HttpRequest
 import io.github.minthem.noob.http.message.MediaType
 import io.github.minthem.noob.http.multipart.MultipartBody
 import io.github.minthem.noob.http.message.contentType
+import org.slf4j.LoggerFactory
 import java.io.Closeable
 import java.io.InputStream
 
@@ -91,8 +92,12 @@ class Context internal constructor(
             try {
                 action.invoke()
             } catch (e: Exception) {
-                e.printStackTrace()
+                logger.error("Error cleaning up context", e)
             }
         }
+    }
+
+    companion object {
+        private val logger = LoggerFactory.getLogger(Context::class.java)
     }
 }

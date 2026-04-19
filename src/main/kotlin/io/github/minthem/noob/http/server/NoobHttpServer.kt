@@ -8,6 +8,7 @@ import io.github.minthem.noob.http.parser.HttpHeadersParser
 import io.github.minthem.noob.http.parser.HttpRequestParser
 import io.github.minthem.noob.http.router.Router
 import io.github.minthem.noob.http.router.RouterRegistry
+import org.slf4j.LoggerFactory
 import java.net.InetSocketAddress
 import java.net.StandardProtocolFamily
 import java.nio.channels.ServerSocketChannel
@@ -52,7 +53,7 @@ class NoobHttpServer(
             })
 
             serverChannel.use { serverChannel ->
-                println("Listening on port ${config.port}")
+                logger.info("Listening on port {}", config.port)
 
                 executor.use { executor ->
                     while (true) {
@@ -66,7 +67,7 @@ class NoobHttpServer(
                                 }
                             }
                         } catch (e: Exception) {
-                            e.printStackTrace()
+                            logger.error("Error during client connection", e)
                             return
                         }
                     }
@@ -87,14 +88,14 @@ class NoobHttpServer(
         try {
             serverChannel.close()
         } catch (e: Exception) {
-            e.printStackTrace()
+            logger.error("Error closing server channel", e)
         }
         try {
             executor.shutdown()
             executor.awaitTermination(config.timeouts.shutdownMillis, TimeUnit.MILLISECONDS)
         } catch (e: InterruptedException) {
             Thread.currentThread().interrupt()
-            e.printStackTrace()
+            logger.error("Interrupted while waiting for executor shutdown", e)
         }
 
         executor.shutdownNow()
@@ -123,12 +124,16 @@ class NoobHttpServer(
         private val server: NoobHttpServer,
     ) : LifecycleEvent {
         override fun onStart() {
-            println("Server started")
+            logger.info("Server started")
         }
 
         override fun onStop() {
             server.shutdown()
-            println("Server stopped")
+            logger.info("Server stopped")
         }
+    }
+
+    companion object {
+        private val logger = LoggerFactory.getLogger(NoobHttpServer::class.java)
     }
 }
