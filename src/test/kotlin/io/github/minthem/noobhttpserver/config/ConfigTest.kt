@@ -37,6 +37,7 @@ class ConfigTest {
             assertEquals(30_000, actual.readMillis)
             assertEquals(30_000, actual.writeMillis)
             assertEquals(120_000, actual.sessionMillis)
+            assertEquals(30_000, actual.shutdownMillis)
         }
 
         @Test
@@ -67,6 +68,15 @@ class ConfigTest {
         }
 
         @Test
+        fun `throws when shutdown timeout is zero`() {
+            val actual = assertFailsWith<IllegalArgumentException> {
+                TimeoutConfig(shutdownMillis = 0)
+            }
+
+            assertEquals("Shutdown timeout must be positive", actual.message)
+        }
+
+        @Test
         fun `throws when read timeout is negative`() {
             val actual = assertFailsWith<IllegalArgumentException> {
                 TimeoutConfig(readMillis = -1)
@@ -91,6 +101,14 @@ class ConfigTest {
             }
 
             assertEquals("Session timeout must be positive", actual.message)
+        }
+        @Test
+        fun `throws when shutdown timeout is negative`() {
+            val actual = assertFailsWith<IllegalArgumentException> {
+                TimeoutConfig(shutdownMillis = -1)
+            }
+
+            assertEquals("Shutdown timeout must be positive", actual.message)
         }
     }
 
