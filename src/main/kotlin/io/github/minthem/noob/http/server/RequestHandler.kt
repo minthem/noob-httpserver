@@ -6,6 +6,7 @@ import io.github.minthem.noob.http.message.HttpRequest
 import io.github.minthem.noob.http.message.HttpResponse
 import io.github.minthem.noob.http.parser.HttpRequestParser
 import io.github.minthem.noob.http.router.Context
+import org.slf4j.LoggerFactory
 
 internal class RequestHandler(
     private val parser: HttpRequestParser,
@@ -31,11 +32,15 @@ internal class RequestHandler(
 
             response
         } catch (e: HttpResponseException) {
-            e.printStackTrace() // TODO use logger library
+            logger.error("Error processing request: {}", e.message, e)
             e.httpResponse
         }
 
         return RequestHandlingResult(request, response)
+    }
+
+    companion object {
+        private val logger = LoggerFactory.getLogger(RequestHandler::class.java)
     }
 }
 

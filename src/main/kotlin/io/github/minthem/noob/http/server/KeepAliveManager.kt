@@ -52,7 +52,6 @@ internal class KeepAliveManager(
         } catch (_: TimeoutException) {
             WaitResult.Timeout
         } catch (e: Exception) {
-            println("Unexpected error: $e")
             WaitResult.Error(e)
         }
     }

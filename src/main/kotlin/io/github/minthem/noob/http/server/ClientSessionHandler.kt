@@ -8,10 +8,11 @@ import io.github.minthem.noob.http.io.TimeoutExecutor
 import io.github.minthem.noob.http.message.HttpProtocol
 import io.github.minthem.noob.http.message.HttpResponse
 import io.github.minthem.noob.http.message.HttpStatus
+import org.slf4j.LoggerFactory
 import java.nio.ByteBuffer
 import java.nio.channels.ByteChannel
 
-// TODO logger
+
 internal class ClientSessionHandler(
     private val handler: RequestHandler,
     private val writer: HttpResponseWriter,
@@ -21,7 +22,7 @@ internal class ClientSessionHandler(
     private val requestBufferSize: Int,
 ) {
     fun handle(context: ConnectionContext) {
-        println("--------------- Start new session. ---------------")
+        logger.info("--------------- Start new session. ---------------")
         val socket = context.channel
         val buffer = ByteBuffer.allocate(requestBufferSize)
         buffer.flip()
@@ -47,27 +48,27 @@ internal class ClientSessionHandler(
                 }
 
                 if (!isKeepAlive) {
-                    println("Close connection.")
+                    logger.info("Close connection.")
                     break@session
                 }
 
                 // KeepAliveで次のパケットが来るまで待機
                 when (val waitResult = keepAliveManager.waitForNextRequest(stream)) {
                     WaitResult.Ready -> {
-                        println("Keep-Alive session, reuse connection.")
+                        logger.info("Keep-Alive session, reuse connection.")
                         context.reuse()
                         continue@session
                     }
                     WaitResult.Eof -> {
-                        println("Client closed connection.")
+                        logger.info("Client closed connection.")
                         break@session
                     }
                     WaitResult.Timeout -> {
-                        println("Timeout. Close connection.")
+                        logger.info("Timeout. Close connection.")
                         break@session
                     }
                     is WaitResult.Error -> {
-                        println("Unexpected error: ${waitResult.cause}")
+                        logger.error("Unexpected error: {}", waitResult.cause.message, waitResult.cause)
                         break@session
                     }
                 }
@@ -78,13 +79,13 @@ internal class ClientSessionHandler(
                  * TODO ソケット切れた際の専用例外を作る (ClientDisconnectedException) read() == -1 とか write() < 0 とかEOFException
                  * 作ったらここでは拾わない
                  */
-                println("Connection closed by client. $e")
+                logger.error("Connection closed by client. {}", e.message, e)
             } else {
                 responseInternalServerError(channel)
             }
         } catch (e: HttpResponseException) {
             if (!socket.isOpen) {
-                println("Connection closed by client. $e")
+                logger.error("Connection closed by client. {}", e.message, e)
             } else {
                 writer.write(channel, HttpProtocol.HTTP_1_1, e.httpResponse)
             }
@@ -92,9 +93,9 @@ internal class ClientSessionHandler(
             if (socket.isOpen) {
                 responseInternalServerError(channel)
             }
-            e.printStackTrace()
+            logger.error("Unexpected error during session handling", e)
         } finally {
-            println("--------------- End session. ---------------")
+            logger.info("--------------- End session. ---------------")
         }
     }
 
@@ -104,5 +105,9 @@ internal class ClientSessionHandler(
             header("connection", "close")
         }
         writer.write(channel, HttpProtocol.HTTP_1_1, response)
+    }
+
+    companion object {
+        private val logger = LoggerFactory.getLogger(ClientSessionHandler::class.java)
     }
 }
