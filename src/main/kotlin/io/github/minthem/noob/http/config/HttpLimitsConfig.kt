@@ -5,7 +5,7 @@ data class HttpLimitsConfig(
     val maxHeaderSectionBytes: Int = 16 * 1024,
     val maxHeaderNameBytes: Int = 256,
     val maxHeaderValueBytes: Int = 8 * 1024,
-    val maxHeaderCount: Int = 100
+    val maxHeaderCount: Int = 100,
 ) {
     init {
         require(maxRequestTargetBytes > 0) { "Max request target bytes must be positive" }

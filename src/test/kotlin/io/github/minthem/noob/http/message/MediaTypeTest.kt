@@ -8,7 +8,6 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class MediaTypeTest {
-
     @Test
     fun `parse should correctly parse type and subtype`() {
         val mediaType = MediaType.parse("text/plain")
@@ -100,7 +99,7 @@ class MediaTypeTest {
 
         assertEquals(
             mediaType1.isCompatibleWith(mediaType2),
-            mediaType2.isCompatibleWith(mediaType1)
+            mediaType2.isCompatibleWith(mediaType1),
         )
     }
 

@@ -2,7 +2,6 @@ package io.github.minthem.noob.http.parser
 
 import io.github.minthem.noob.http.config.HttpLimitsConfig
 import io.github.minthem.noob.http.exception.BadRequestException
-import io.github.minthem.noob.http.message.contentLength
 import io.github.minthem.noob.http.io.BodySourceInputStream
 import io.github.minthem.noob.http.io.ByteReadStream
 import io.github.minthem.noob.http.message.ChunkedBodySource
@@ -13,14 +12,14 @@ import io.github.minthem.noob.http.message.HttpProtocol
 import io.github.minthem.noob.http.message.HttpRequest
 import io.github.minthem.noob.http.message.RequestTarget
 import io.github.minthem.noob.http.message.RequestTargetParser
+import io.github.minthem.noob.http.message.contentLength
 import java.io.EOFException
 import java.io.InputStream
 
 internal class HttpRequestParser(
     private val headerParser: HttpHeadersParser,
-    private val config: HttpLimitsConfig
+    private val config: HttpLimitsConfig,
 ) {
-
     fun parse(stream: ByteReadStream): HttpRequest {
         try {
             val method = readMethod(stream)
@@ -49,9 +48,8 @@ internal class HttpRequestParser(
         return HttpMethod.fromString(sb.toString())
     }
 
-    private fun readRequestTarget(stream: ByteReadStream): RequestTarget {
-        return RequestTargetParser.parseFromStream(stream, config.maxRequestTargetBytes)
-    }
+    private fun readRequestTarget(stream: ByteReadStream): RequestTarget =
+        RequestTargetParser.parseFromStream(stream, config.maxRequestTargetBytes)
 
     private fun readProtocol(stream: ByteReadStream): HttpProtocol {
         val sb = StringBuilder()
@@ -75,44 +73,50 @@ internal class HttpRequestParser(
         return HttpProtocol.fromString(sb.toString())
     }
 
-    private fun readHeaders(stream: ByteReadStream): HttpHeaders {
-        return try {
+    private fun readHeaders(stream: ByteReadStream): HttpHeaders =
+        try {
             headerParser.parse(stream)
         } catch (_: EOFException) {
             throw IllegalArgumentException("Unexpected end of stream while reading headers")
         }
-    }
 
-    private fun getInputStreamForRequestBody(stream: ByteReadStream, headers: HttpHeaders): InputStream {
+    private fun getInputStreamForRequestBody(
+        stream: ByteReadStream,
+        headers: HttpHeaders,
+    ): InputStream {
         val contentLength = headers.contentLength
         val isChunked = headers["Transfer-Encoding"]?.equals("chunked", ignoreCase = true) ?: false
-
 
         if (contentLength != null && isChunked) {
             throw IllegalArgumentException("Content-Length and Transfer-Encoding headers are mutually exclusive")
         }
 
-        val source = when {
-            isChunked -> ChunkedBodySource(stream)
-            else -> FixedLengthBodySource(stream, contentLength ?: 0)
-        }
+        val source =
+            when {
+                isChunked -> ChunkedBodySource(stream)
+                else -> FixedLengthBodySource(stream, contentLength ?: 0)
+            }
 
         return BodySourceInputStream(source)
     }
 
-    private fun nextOrBadRequest(stream: ByteReadStream, message: String): Byte {
-        return try {
+    private fun nextOrBadRequest(
+        stream: ByteReadStream,
+        message: String,
+    ): Byte =
+        try {
             stream.next()
         } catch (_: EOFException) {
             throw IllegalArgumentException(message)
         }
-    }
 
-    private fun peekOrBadRequest(stream: ByteReadStream, message: String): Int {
-        return try {
+    private fun peekOrBadRequest(
+        stream: ByteReadStream,
+        message: String,
+    ): Int =
+        try {
             stream.peak()
         } catch (_: EOFException) {
             throw IllegalArgumentException(message)
         }
-    }
 }

@@ -10,25 +10,43 @@ import java.nio.file.Path
 class HttpResponse private constructor(
     val status: HttpStatus,
     val headers: HttpHeaders,
-    internal val body: BodyWriteExecutor
+    internal val body: BodyWriteExecutor,
 ) {
-
     class Builder internal constructor() {
         var status: HttpStatus = HttpStatus.OK
         private var headers = MutableHttpHeaders()
         private var body: BodySpec = BodySpec.Empty
 
-        fun header(key: String, value: String) = apply { headers.add(key, value) }
-        fun header(vararg pairs: Pair<String, String>) = apply { headers.add(*pairs) }
-        fun header(other: HttpHeaders) = apply {
-            other.forEach { key, value -> headers.addAll(key, value) }
-        }
+        fun header(
+            key: String,
+            value: String,
+        ) = apply { headers.add(key, value) }
 
-        fun body(text: String, charset: Charset = Charsets.UTF_8) = apply { body = BodySpec.Text(text, charset) }
+        fun header(vararg pairs: Pair<String, String>) = apply { headers.add(*pairs) }
+
+        fun header(other: HttpHeaders) =
+            apply {
+                other.forEach { key, value -> headers.addAll(key, value) }
+            }
+
+        fun body(
+            text: String,
+            charset: Charset = Charsets.UTF_8,
+        ) = apply { body = BodySpec.Text(text, charset) }
+
         fun body(bytes: ByteArray) = apply { body = BodySpec.Binary(bytes) }
-        fun body(path: Path, charset: Charset = Charsets.UTF_8) = apply { body = BodySpec.File(path, charset) }
+
+        fun body(
+            path: Path,
+            charset: Charset = Charsets.UTF_8,
+        ) = apply { body = BodySpec.File(path, charset) }
+
         fun body(source: CloseableSequence<ByteArray>) = apply { body = BodySpec.Chunked(source) }
-        fun body(source: CloseableSequence<String>, charset: Charset = Charsets.UTF_8) = apply {
+
+        fun body(
+            source: CloseableSequence<String>,
+            charset: Charset = Charsets.UTF_8,
+        ) = apply {
             body = BodySpec.Chunked(source.map { it.toByteArray(charset) }.asCloseable { source.close() })
         }
 

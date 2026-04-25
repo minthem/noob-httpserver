@@ -3,17 +3,20 @@ package io.github.minthem.noob.http.router
 import io.github.minthem.noob.http.message.HttpMethod
 
 internal class RouteResolutionAccumulator {
-
     private data class Candidate(
         val handler: Handler,
         val pathParams: Map<String, String>,
-        val score: PathSpecificity
+        val score: PathSpecificity,
     )
 
     private var bestCandidate: Candidate? = null
     private val allowedMethods = linkedSetOf<HttpMethod>()
 
-    fun considerMatch(handler: Handler, pathParams: Map<String, String>, score: PathSpecificity) {
+    fun considerMatch(
+        handler: Handler,
+        pathParams: Map<String, String>,
+        score: PathSpecificity,
+    ) {
         val candidate = Candidate(handler, pathParams, score)
         val currentBest = bestCandidate
 
@@ -26,8 +29,8 @@ internal class RouteResolutionAccumulator {
         allowedMethods.addAll(methods)
     }
 
-    fun toRouteMatchResult(): RouteMatchResult {
-        return when (val best = bestCandidate) {
+    fun toRouteMatchResult(): RouteMatchResult =
+        when (val best = bestCandidate) {
             null -> {
                 if (allowedMethods.isNotEmpty()) {
                     RouteMatchResult.MethodNotMatch(allowedMethods.toSet())
@@ -38,10 +41,9 @@ internal class RouteResolutionAccumulator {
 
             else -> RouteMatchResult.Match(best.handler, best.pathParams, best.score)
         }
-    }
 
-    fun toRouterMatchResult(): RouterMatchResult {
-        return when (val best = bestCandidate) {
+    fun toRouterMatchResult(): RouterMatchResult =
+        when (val best = bestCandidate) {
             null -> {
                 if (allowedMethods.isNotEmpty()) {
                     RouterMatchResult.MethodNotMatch(allowedMethods.toSet())
@@ -52,5 +54,4 @@ internal class RouteResolutionAccumulator {
 
             else -> RouterMatchResult.Match(best.handler, best.pathParams)
         }
-    }
 }

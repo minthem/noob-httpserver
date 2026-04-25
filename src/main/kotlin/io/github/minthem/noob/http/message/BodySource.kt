@@ -4,23 +4,28 @@ import io.github.minthem.noob.http.io.ByteReadStream
 import java.io.ByteArrayOutputStream
 
 internal interface BodySource {
-
-    fun read(b: ByteArray, off: Int = 0, len: Int = b.size): Int
+    fun read(
+        b: ByteArray,
+        off: Int = 0,
+        len: Int = b.size,
+    ): Int
 }
-
 
 internal class FixedLengthBodySource(
     private val stream: ByteReadStream,
-    private val length: Long
+    private val length: Long,
 ) : BodySource {
-
     init {
         require(length >= 0) { "length must be non-negative: $length" }
     }
 
     private var remaining = length
 
-    override fun read(b: ByteArray, off: Int, len: Int): Int {
+    override fun read(
+        b: ByteArray,
+        off: Int,
+        len: Int,
+    ): Int {
         if (off < 0 || len < 0 || len > b.size - off) {
             throw IndexOutOfBoundsException("offset: $off, length: $len, array size: ${b.size}")
         }
@@ -46,16 +51,21 @@ internal class FixedLengthBodySource(
 internal class ChunkedBodySource(
     private val stream: ByteReadStream,
 ) : BodySource {
-
     private enum class State {
-        READING_CHUNK_SIZE, READING_CHUNK_DATA, READING_TRAILER
+        READING_CHUNK_SIZE,
+        READING_CHUNK_DATA,
+        READING_TRAILER,
     }
 
     private var state = State.READING_CHUNK_SIZE
     private var chunkRemain = 0L
     private var exhausted = false
 
-    override fun read(b: ByteArray, off: Int, len: Int): Int {
+    override fun read(
+        b: ByteArray,
+        off: Int,
+        len: Int,
+    ): Int {
         if (off < 0 || len < 0 || len > b.size - off) {
             throw IndexOutOfBoundsException("offset: $off, length: $len, array size: ${b.size}")
         }

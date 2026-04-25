@@ -10,7 +10,6 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class PathPatternTest {
-
     @Test
     fun `testMatch should return true when nothing path parameters`() {
         val pattern = PathPattern.parse("/users")
@@ -248,8 +247,8 @@ class PathPatternTest {
             "/users/{id}bar",
             "/users/{id-name}",
             "/users/{id}{name}",
-            "/users/{+++++++}}"
-        ]
+            "/users/{+++++++}}",
+        ],
     )
     fun `testInvalidPathPattern should throw exception for more invalid patterns`(pattern: String) {
         assertFailsWith<IllegalArgumentException> {

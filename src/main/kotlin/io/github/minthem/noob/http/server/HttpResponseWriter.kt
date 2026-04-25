@@ -10,13 +10,13 @@ import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 
 internal class HttpResponseWriter(
-    private val responseHeaderBufferSize: Int
+    private val responseHeaderBufferSize: Int,
 ) {
     fun write(
         writeChannel: WritableByteChannel,
         protocol: HttpProtocol,
         httpResponse: HttpResponse,
-        now: ZonedDateTime = ZonedDateTime.now(ZoneId.of("UTC"))
+        now: ZonedDateTime = ZonedDateTime.now(ZoneId.of("UTC")),
     ) {
         val buffer = ByteBuffer.allocate(responseHeaderBufferSize)
 
@@ -59,14 +59,16 @@ internal class HttpResponseWriter(
 
 private class ByteWriter(
     private val writeChannel: WritableByteChannel,
-    private val buffer: ByteBuffer
+    private val buffer: ByteBuffer,
 ) : AutoCloseable {
-
     init {
         buffer.clear()
     }
 
-    fun write(string: String, charset: Charset = Charsets.US_ASCII) {
+    fun write(
+        string: String,
+        charset: Charset = Charsets.US_ASCII,
+    ) {
         write(string.toByteArray(charset))
     }
 

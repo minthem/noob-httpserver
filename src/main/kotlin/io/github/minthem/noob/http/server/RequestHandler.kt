@@ -10,9 +10,8 @@ import org.slf4j.LoggerFactory
 
 internal class RequestHandler(
     private val parser: HttpRequestParser,
-    private val routeResolver: RouteResolver
+    private val routeResolver: RouteResolver,
 ) {
-
     /**
      * Processes an incoming HTTP request from the provided byte stream and generates a response.
      *
@@ -24,17 +23,19 @@ internal class RequestHandler(
     fun process(stream: ByteReadStream): RequestHandlingResult {
         val request = parser.parse(stream)
 
-        val response = try {
-            val route = routeResolver.resolve(request)
-            val response = Context(request, route.pathParams).use {
-                route.handler(it)
-            }
+        val response =
+            try {
+                val route = routeResolver.resolve(request)
+                val response =
+                    Context(request, route.pathParams).use {
+                        route.handler(it)
+                    }
 
-            response
-        } catch (e: HttpResponseException) {
-            logger.error("Error processing request: {}", e.message, e)
-            e.httpResponse
-        }
+                response
+            } catch (e: HttpResponseException) {
+                logger.error("Error processing request: {}", e.message, e)
+                e.httpResponse
+            }
 
         return RequestHandlingResult(request, response)
     }
@@ -44,4 +45,7 @@ internal class RequestHandler(
     }
 }
 
-internal class RequestHandlingResult(val request: HttpRequest, val response: HttpResponse)
+internal class RequestHandlingResult(
+    val request: HttpRequest,
+    val response: HttpResponse,
+)

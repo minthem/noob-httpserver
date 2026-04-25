@@ -7,10 +7,15 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class LifecycleEventManagerTest {
+    private data class Event(
+        val id: String,
+        val event: String,
+    )
 
-    private data class Event(val id: String, val event: String)
-
-    private class LifecycleEventMock(private val id: String, private val event: MutableList<Event>) : LifecycleEvent {
+    private class LifecycleEventMock(
+        private val id: String,
+        private val event: MutableList<Event>,
+    ) : LifecycleEvent {
         override fun onStart() {
             event.add(Event(id, "start"))
         }
@@ -29,10 +34,11 @@ class LifecycleEventManagerTest {
         manager.startAll()
         manager.stopAll()
 
-        val expected = listOf(
-            Event("test", "start"),
-            Event("test", "stop"),
-        )
+        val expected =
+            listOf(
+                Event("test", "start"),
+                Event("test", "stop"),
+            )
         assertEquals(expected, events)
     }
 
@@ -50,14 +56,15 @@ class LifecycleEventManagerTest {
         manager.startAll()
         manager.stopAll()
 
-        val expected = listOf(
-            Event("test1", "start"),
-            Event("test2", "start"),
-            Event("test3", "start"),
-            Event("test3", "stop"),
-            Event("test2", "stop"),
-            Event("test1", "stop"),
-        )
+        val expected =
+            listOf(
+                Event("test1", "start"),
+                Event("test2", "start"),
+                Event("test3", "start"),
+                Event("test3", "stop"),
+                Event("test2", "stop"),
+                Event("test1", "stop"),
+            )
         assertEquals(expected, events)
     }
 
@@ -71,7 +78,6 @@ class LifecycleEventManagerTest {
         val expected: List<Event> = emptyList()
         assertEquals(expected, events)
     }
-
 
     @Test
     fun `should start and stop after unregistering one of multiple registered events`() {
@@ -89,12 +95,13 @@ class LifecycleEventManagerTest {
         manager.startAll()
         manager.stopAll()
 
-        val expected = listOf(
-            Event("test1", "start"),
-            Event("test3", "start"),
-            Event("test3", "stop"),
-            Event("test1", "stop"),
-        )
+        val expected =
+            listOf(
+                Event("test1", "start"),
+                Event("test3", "start"),
+                Event("test3", "stop"),
+                Event("test1", "stop"),
+            )
         assertEquals(expected, events)
     }
 
@@ -117,12 +124,13 @@ class LifecycleEventManagerTest {
         manager.startAll()
         manager.stopAll()
 
-        val expected = listOf(
-            Event("test1", "start"),
-            Event("test3", "start"),
-            Event("test3", "stop"),
-            Event("test1", "stop"),
-        )
+        val expected =
+            listOf(
+                Event("test1", "start"),
+                Event("test3", "start"),
+                Event("test3", "stop"),
+                Event("test1", "stop"),
+            )
         assertEquals(expected, events)
     }
 
@@ -138,10 +146,11 @@ class LifecycleEventManagerTest {
         manager.startAll()
         manager.stopAll()
 
-        val expected = listOf(
-            Event("test", "start"),
-            Event("test", "stop"),
-        )
+        val expected =
+            listOf(
+                Event("test", "start"),
+                Event("test", "stop"),
+            )
         assertEquals(expected, events)
     }
 
@@ -153,9 +162,10 @@ class LifecycleEventManagerTest {
         manager.register(hook)
         manager.startAll()
 
-        val exp = assertThrows<IllegalStateException> {
-            manager.startAll()
-        }
+        val exp =
+            assertThrows<IllegalStateException> {
+                manager.startAll()
+            }
         assertEquals("Cannot start hooks twice", exp.message)
     }
 
@@ -168,9 +178,10 @@ class LifecycleEventManagerTest {
         manager.startAll()
         manager.stopAll()
 
-        val exp = assertThrows<IllegalStateException> {
-            manager.stopAll()
-        }
+        val exp =
+            assertThrows<IllegalStateException> {
+                manager.stopAll()
+            }
         assertEquals("Cannot stop hooks twice", exp.message)
     }
 
@@ -183,9 +194,10 @@ class LifecycleEventManagerTest {
         manager.register(hook1)
         manager.startAll()
 
-        val exp = assertThrows<IllegalStateException> {
-            manager.register(hook2)
-        }
+        val exp =
+            assertThrows<IllegalStateException> {
+                manager.register(hook2)
+            }
 
         assertEquals("Cannot register hooks after start", exp.message)
     }
@@ -200,9 +212,10 @@ class LifecycleEventManagerTest {
         val hookId2 = manager.register(hook2)
         manager.startAll()
 
-        val exp = assertThrows<IllegalStateException> {
-            manager.unregister(hookId2)
-        }
+        val exp =
+            assertThrows<IllegalStateException> {
+                manager.unregister(hookId2)
+            }
 
         assertEquals("Cannot unregister hooks after start", exp.message)
     }
@@ -211,10 +224,11 @@ class LifecycleEventManagerTest {
     fun `should execute all events even when start fails`() {
         val events = mutableListOf<Event>()
 
-        class LifecycleEventSideEffect(private val id: String, private val event: MutableList<Event>) : LifecycleEvent {
-            override fun onStart() {
-                throw RuntimeException("start error")
-            }
+        class LifecycleEventSideEffect(
+            private val id: String,
+            private val event: MutableList<Event>,
+        ) : LifecycleEvent {
+            override fun onStart(): Unit = throw RuntimeException("start error")
 
             override fun onStop() {
                 event.add(Event(id, "stop"))
@@ -235,13 +249,14 @@ class LifecycleEventManagerTest {
 
         assertDoesNotThrow { manager.stopAll() }
 
-        val expected = listOf(
-            Event("test1", "start"),
-            Event("test3", "start"),
-            Event("test3", "stop"),
-            Event("test2", "stop"),
-            Event("test1", "stop"),
-        )
+        val expected =
+            listOf(
+                Event("test1", "start"),
+                Event("test3", "start"),
+                Event("test3", "stop"),
+                Event("test2", "stop"),
+                Event("test1", "stop"),
+            )
         assertEquals(expected, events)
     }
 
@@ -249,14 +264,15 @@ class LifecycleEventManagerTest {
     fun `should execute all events even when stop fails`() {
         val events = mutableListOf<Event>()
 
-        class LifecycleEventSideEffect(private val id: String, private val event: MutableList<Event>) : LifecycleEvent {
+        class LifecycleEventSideEffect(
+            private val id: String,
+            private val event: MutableList<Event>,
+        ) : LifecycleEvent {
             override fun onStart() {
                 event.add(Event(id, "start"))
             }
 
-            override fun onStop() {
-                throw RuntimeException("stop error")
-            }
+            override fun onStop(): Unit = throw RuntimeException("stop error")
         }
 
         val hook1 = LifecycleEventMock("test1", events)
@@ -273,13 +289,14 @@ class LifecycleEventManagerTest {
             manager.stopAll()
         }
 
-        val expected = listOf(
-            Event("test1", "start"),
-            Event("test2", "start"),
-            Event("test3", "start"),
-            Event("test3", "stop"),
-            Event("test1", "stop"),
-        )
+        val expected =
+            listOf(
+                Event("test1", "start"),
+                Event("test2", "start"),
+                Event("test3", "start"),
+                Event("test3", "stop"),
+                Event("test1", "stop"),
+            )
         assertEquals(expected, events)
     }
 }

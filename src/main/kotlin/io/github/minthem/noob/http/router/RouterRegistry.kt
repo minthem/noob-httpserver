@@ -4,7 +4,6 @@ import io.github.minthem.noob.http.message.HttpMethod
 import io.github.minthem.noob.http.message.HttpRequest
 
 internal class RouterRegistry {
-
     private val routers = mutableListOf<Router>()
 
     fun register(router: Router) {

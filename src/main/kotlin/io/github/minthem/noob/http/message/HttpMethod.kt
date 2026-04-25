@@ -1,11 +1,14 @@
 package io.github.minthem.noob.http.message
 
-enum class HttpMethod(private val value: String) {
+enum class HttpMethod(
+    private val value: String,
+) {
     GET("GET"),
     POST("POST"),
     PUT("PUT"),
     DELETE("DELETE"),
-    HEAD("HEAD");
+    HEAD("HEAD"),
+    ;
 
     fun value() = value
 

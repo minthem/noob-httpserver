@@ -10,10 +10,7 @@ internal class HttpRequest(
     internal val headers: HttpHeaders,
     internal val bodyStream: InputStream,
 ) {
-
-    fun withPath(newPath: RequestTarget): HttpRequest {
-        return HttpRequest(method, newPath, protocol, headers, bodyStream)
-    }
+    fun withPath(newPath: RequestTarget): HttpRequest = HttpRequest(method, newPath, protocol, headers, bodyStream)
 
     fun drainBody() {
         bodyStream.transferTo(OutputStream.nullOutputStream())

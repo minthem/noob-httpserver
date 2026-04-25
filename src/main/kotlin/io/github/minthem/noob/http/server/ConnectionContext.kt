@@ -15,9 +15,8 @@ internal class ConnectionContext(
     val createdAt: Instant,
     val remoteIp: String?,
     val remotePort: Int?,
-    val channel: ByteChannel
+    val channel: ByteChannel,
 ) {
-
     fun reuse() {
         this._reuseCount++
     }
@@ -41,7 +40,7 @@ internal class ConnectionContext(
                 createdAt = createdAt,
                 remoteIp = remoteIp,
                 remotePort = remotePort,
-                channel = socket
+                channel = socket,
             )
         }
     }

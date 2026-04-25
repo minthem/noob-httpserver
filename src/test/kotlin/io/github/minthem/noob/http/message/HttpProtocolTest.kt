@@ -5,7 +5,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class HttpProtocolTest {
-
     @Test
     fun `fromString should return a valid HttpProtocol`() {
         assertEquals(HttpProtocol.HTTP_1_0, HttpProtocol.fromString("HTTP/1.0"))
@@ -20,17 +19,19 @@ class HttpProtocolTest {
 
     @Test
     fun `fromString should be case sensitive`() {
-        val exception = assertThrows<IllegalArgumentException> {
-            HttpProtocol.fromString("http/1.1")
-        }
+        val exception =
+            assertThrows<IllegalArgumentException> {
+                HttpProtocol.fromString("http/1.1")
+            }
         assertEquals("Invalid protocol: http/1.1", exception.message)
     }
 
     @Test
     fun `fromString should throw an exception when the protocol is invalid`() {
-        val exception = assertThrows<IllegalArgumentException> {
-            HttpProtocol.fromString("INVALID")
-        }
+        val exception =
+            assertThrows<IllegalArgumentException> {
+                HttpProtocol.fromString("INVALID")
+            }
         assertEquals("Invalid protocol: INVALID", exception.message)
     }
 }

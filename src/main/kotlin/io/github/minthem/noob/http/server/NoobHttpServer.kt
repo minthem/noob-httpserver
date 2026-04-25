@@ -19,9 +19,8 @@ import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.io.use
 
 class NoobHttpServer(
-    private val config: ServerConfig = ServerConfig()
+    private val config: ServerConfig = ServerConfig(),
 ) {
-
     private val routerRegistry = RouterRegistry()
     private val lifecycleManager = LifecycleManager()
     private val timeoutExecutor = TimeoutExecutor(Executors.newSingleThreadScheduledExecutor())
@@ -48,9 +47,11 @@ class NoobHttpServer(
             lifecycleManager.register(serverEvent)
             lifecycleManager.startAll()
 
-            Runtime.getRuntime().addShutdownHook(Thread {
-                lifecycleManager.stopAll()
-            })
+            Runtime.getRuntime().addShutdownHook(
+                Thread {
+                    lifecycleManager.stopAll()
+                },
+            )
 
             serverChannel.use { serverChannel ->
                 logger.info("Listening on port {}", config.port)

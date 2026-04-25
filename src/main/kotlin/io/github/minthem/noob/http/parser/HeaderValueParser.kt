@@ -4,16 +4,16 @@ import io.github.minthem.noob.http.message.HeaderValue
 import kotlin.text.iterator
 
 internal object HeaderValueParser {
-
     fun parseSingle(raw: String): HeaderValue {
         val (firstValue, _) = HeaderValueSplitter.splitFirstAndRest(raw, ',')
         val (elemFirst, elemSecond) = HeaderValueSplitter.splitFirstAndRest(firstValue, ';')
 
-        val mainValue = if (isQuoted(elemFirst)) {
-            decodeQuotedString(elemFirst)
-        } else {
-            elemFirst
-        }
+        val mainValue =
+            if (isQuoted(elemFirst)) {
+                decodeQuotedString(elemFirst)
+            } else {
+                elemFirst
+            }
 
         val paramsStrings = elemSecond?.let { HeaderValueSplitter.split(it, ';') } ?: emptyList()
         val params = mutableMapOf<String, String?>()
@@ -32,22 +32,24 @@ internal object HeaderValueParser {
             throw IllegalArgumentException("Invalid parameter name")
         }
 
-        val (name, value) = if (parameter.contains("=")) {
-            val parts = parameter.split("=", limit = 2)
-            parts[0].trim() to parts[1].trim()
-        } else {
-            parameter to null
-        }
+        val (name, value) =
+            if (parameter.contains("=")) {
+                val parts = parameter.split("=", limit = 2)
+                parts[0].trim() to parts[1].trim()
+            } else {
+                parameter to null
+            }
 
         if (!name.matches(tokenRegex)) {
             throw IllegalArgumentException("Invalid parameter name")
         }
 
-        val normalizedValue = when {
-            value == null -> null
-            isQuoted(value) -> decodeQuotedString(value)
-            else -> value
-        }
+        val normalizedValue =
+            when {
+                value == null -> null
+                isQuoted(value) -> decodeQuotedString(value)
+                else -> value
+            }
 
         return name to normalizedValue
     }
@@ -75,15 +77,14 @@ internal object HeaderValueParser {
         return sb.toString()
     }
 
-    private fun isQuoted(value: String): Boolean {
-        return value.startsWith("\"") && value.endsWith("\"")
-    }
-
+    private fun isQuoted(value: String): Boolean = value.startsWith("\"") && value.endsWith("\"")
 }
 
 internal object HeaderValueSplitter {
-
-    fun split(input: String, delimiter: Char): List<String> {
+    fun split(
+        input: String,
+        delimiter: Char,
+    ): List<String> {
         val result = mutableListOf<String>()
         var target = input
         while (true) {
@@ -98,12 +99,18 @@ internal object HeaderValueSplitter {
         return result
     }
 
-    fun splitFirstAndRest(input: String, delimiter: Char): Pair<String, String?> {
+    fun splitFirstAndRest(
+        input: String,
+        delimiter: Char,
+    ): Pair<String, String?> {
         val result = splitDelim(input, delimiter)
         return result
     }
 
-    private fun splitDelim(input: String, delimiter: Char): Pair<String, String?> {
+    private fun splitDelim(
+        input: String,
+        delimiter: Char,
+    ): Pair<String, String?> {
         val part = StringBuilder()
         var inQuote = false
         var escaped = false

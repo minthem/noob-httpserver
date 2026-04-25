@@ -9,7 +9,6 @@ import kotlin.test.assertNull
  * It parses a given request target string into `path` and `query` components and validates it using the OriginFormValidator.
  */
 internal class RequestTargetTest {
-
     @Test
     fun `constructor succeeds for valid request target with path only`() {
         val target = "/valid/path"
@@ -32,9 +31,9 @@ internal class RequestTargetTest {
         assertEquals(
             mapOf(
                 "param1" to listOf("value1"),
-                "param2" to listOf("value2")
+                "param2" to listOf("value2"),
             ),
-            requestTarget.decodedQuery
+            requestTarget.decodedQuery,
         )
     }
 
@@ -72,9 +71,9 @@ internal class RequestTargetTest {
             mapOf(
                 "param1" to listOf("value1"),
                 "param2" to listOf("value2!$"),
-                "'()* ,;" to listOf("")
+                "'()* ,;" to listOf(""),
             ),
-            requestTarget.decodedQuery
+            requestTarget.decodedQuery,
         )
     }
 
@@ -90,7 +89,7 @@ internal class RequestTargetTest {
             mapOf(
                 "first" to listOf("1?second=2"),
             ),
-            requestTarget.decodedQuery
+            requestTarget.decodedQuery,
         )
     }
 
@@ -126,7 +125,7 @@ internal class RequestTargetTest {
 
         assertEquals(
             mapOf("a" to listOf("1", "2", "3")),
-            requestTarget.decodedQuery
+            requestTarget.decodedQuery,
         )
     }
 
@@ -136,7 +135,7 @@ internal class RequestTargetTest {
 
         assertEquals(
             mapOf("a" to listOf("")),
-            requestTarget.decodedQuery
+            requestTarget.decodedQuery,
         )
     }
 
@@ -146,7 +145,7 @@ internal class RequestTargetTest {
 
         assertEquals(
             mapOf("a" to listOf("")),
-            requestTarget.decodedQuery
+            requestTarget.decodedQuery,
         )
     }
 
@@ -157,9 +156,9 @@ internal class RequestTargetTest {
         assertEquals(
             mapOf(
                 "name" to listOf("あ"),
-                "q" to listOf("http server")
+                "q" to listOf("http server"),
             ),
-            requestTarget.decodedQuery
+            requestTarget.decodedQuery,
         )
     }
 
@@ -170,9 +169,9 @@ internal class RequestTargetTest {
         assertEquals(
             mapOf(
                 "a" to listOf("1"),
-                "b" to listOf("2")
+                "b" to listOf("2"),
             ),
-            requestTarget.decodedQuery
+            requestTarget.decodedQuery,
         )
     }
 
@@ -182,7 +181,7 @@ internal class RequestTargetTest {
 
         assertEquals(
             mapOf("" to listOf("value")),
-            requestTarget.decodedQuery
+            requestTarget.decodedQuery,
         )
     }
 }

@@ -20,9 +20,8 @@ import java.nio.file.Files
  */
 class MultipartBody internal constructor(
     stream: InputStream,
-    boundary: String
+    boundary: String,
 ) : Closeable {
-
     private val parser = MultipartBodyParser(stream, boundary)
     private val readParts = LinkedHashMap<String, Multipart>()
 

@@ -7,7 +7,7 @@ import io.github.minthem.noob.http.router.RouterMatchResult
 import io.github.minthem.noob.http.router.RouterRegistry
 
 internal class RouteResolver(
-    private val registry: RouterRegistry
+    private val registry: RouterRegistry,
 ) {
     fun resolve(request: HttpRequest): RouterMatchResult.Match {
         when (val result = registry.find(request)) {

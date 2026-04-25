@@ -11,7 +11,6 @@ import kotlin.test.assertFailsWith
  * using UTF-8 encoding.
  */
 internal class UriDecoderTest {
-
     @Nested
     inner class DecodePathTest {
         @Test
@@ -101,7 +100,7 @@ internal class UriDecoderTest {
         fun `should throw exception for incomplete percent encoding with missing digits`() {
             val input = "hello%"
             assertFailsWith<IllegalArgumentException>(
-                message = "Expected exception for incomplete percent encoding: $input"
+                message = "Expected exception for incomplete percent encoding: $input",
             ) {
                 UriDecoder.decodeQuery(input)
             }
@@ -111,7 +110,7 @@ internal class UriDecoderTest {
         fun `should throw exception for invalid percent encoding characters`() {
             val input = "hello%G1"
             assertFailsWith<IllegalArgumentException>(
-                message = "Expected exception for invalid percent encoding: $input"
+                message = "Expected exception for invalid percent encoding: $input",
             ) {
                 UriDecoder.decodeQuery(input)
             }
@@ -140,6 +139,7 @@ internal class UriDecoderTest {
             val result = UriDecoder.decodeQuery(input)
             assertEquals(expected, result, "Decoding failed for input: $input")
         }
+
         @Test
         fun `should decode utf8 percent encoded characters and ascii in query`() {
             val input = "%E3%81%82abc%E7%84%BC%E3%81%8D%E3%81%9D%E3%81%B0"

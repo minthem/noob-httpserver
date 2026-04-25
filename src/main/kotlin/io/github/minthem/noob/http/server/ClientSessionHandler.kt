@@ -12,7 +12,6 @@ import org.slf4j.LoggerFactory
 import java.nio.ByteBuffer
 import java.nio.channels.ByteChannel
 
-
 internal class ClientSessionHandler(
     private val handler: RequestHandler,
     private val writer: HttpResponseWriter,
@@ -26,26 +25,32 @@ internal class ClientSessionHandler(
         val socket = context.channel
         val buffer = ByteBuffer.allocate(requestBufferSize)
         buffer.flip()
-        val channel = TimeoutByteChannel(
-            context.channel, timeoutExecutor,
-            timeoutConfig.readMillis, timeoutConfig.writeMillis
-        )
+        val channel =
+            TimeoutByteChannel(
+                context.channel,
+                timeoutExecutor,
+                timeoutConfig.readMillis,
+                timeoutConfig.writeMillis,
+            )
         val stream = ByteChannelReadStream(channel, buffer)
 
         try {
             var isKeepAlive: Boolean
             session@ while (true) {
-                isKeepAlive = timeoutExecutor.run(timeoutConfig.sessionMillis) {
-                    val result = handler.process(stream)
-                    val request = result.request
-                    val response = result.response
+                isKeepAlive =
+                    timeoutExecutor.run(timeoutConfig.sessionMillis) {
+                        val result = handler.process(stream)
+                        val request = result.request
+                        val response = result.response
 
-                    writer.write(channel, request.protocol, response)
+                        writer.write(channel, request.protocol, response)
 
-                    keepAliveManager.shouldKeepAlive(
-                        request, response, context
-                    )
-                }
+                        keepAliveManager.shouldKeepAlive(
+                            request,
+                            response,
+                            context,
+                        )
+                    }
 
                 if (!isKeepAlive) {
                     logger.info("Close connection.")
@@ -100,10 +105,11 @@ internal class ClientSessionHandler(
     }
 
     private fun responseInternalServerError(channel: ByteChannel) {
-        val response = HttpResponse.build {
-            status = HttpStatus.INTERNAL_SERVER_ERROR
-            header("connection", "close")
-        }
+        val response =
+            HttpResponse.build {
+                status = HttpStatus.INTERNAL_SERVER_ERROR
+                header("connection", "close")
+            }
         writer.write(channel, HttpProtocol.HTTP_1_1, response)
     }
 

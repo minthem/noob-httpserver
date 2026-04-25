@@ -12,7 +12,6 @@ internal typealias HookId = String
 
 @OptIn(ExperimentalAtomicApi::class)
 internal class LifecycleManager {
-
     private val hooksRef = AtomicReference<LinkedHashMap<HookId, LifecycleEvent>>(LinkedHashMap())
     private val isStarted = AtomicBoolean(false)
     private val isStopped = AtomicBoolean(false)
@@ -20,7 +19,6 @@ internal class LifecycleManager {
     @OptIn(ExperimentalUuidApi::class)
     private val nextId: HookId
         get() = Uuid.generateV4().toHexString()
-
 
     fun register(hook: LifecycleEvent): HookId {
         if (isStarted.load()) {
@@ -66,7 +64,7 @@ internal class LifecycleManager {
         if (errors.isNotEmpty()) {
             throw LifecycleException(
                 "Failed to start lifecycle hooks",
-                errors
+                errors,
             )
         }
     }
@@ -85,7 +83,7 @@ internal class LifecycleManager {
         if (errors.isNotEmpty()) {
             throw LifecycleException(
                 "Failed to stop lifecycle hooks",
-                errors
+                errors,
             )
         }
     }

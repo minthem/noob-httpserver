@@ -1,30 +1,28 @@
 package io.github.minthem.noob.http.multipart
 
-import io.github.minthem.noob.http.parser.HeaderValueParser
 import io.github.minthem.noob.http.message.HeaderValue
+import io.github.minthem.noob.http.parser.HeaderValueParser
 import java.io.ByteArrayOutputStream
 import java.nio.charset.Charset
 
 @ConsistentCopyVisibility
 data class ContentDisposition private constructor(
     val type: String,
-    val parameters: Map<String, String> = emptyMap()
+    val parameters: Map<String, String> = emptyMap(),
 ) {
-
     val name: String?
         get() = parameters["name"]
 
     val filename: String?
         get() = decodeExtendedFilename() ?: parameters["filename"]
 
-    override fun toString(): String {
-        return if (parameters.isEmpty()) {
+    override fun toString(): String =
+        if (parameters.isEmpty()) {
             type
         } else {
             val params = parameters.entries.joinToString("; ") { "${it.key}=\"${it.value}\"" }
             "$type; $params"
         }
-    }
 
     private fun decodeExtendedFilename(): String? {
         val filename = parameters["filename*"] ?: return null
@@ -33,11 +31,12 @@ data class ContentDisposition private constructor(
 
         val (charsetName, _, filenameRaw) = parts
 
-        val charset = try {
-            Charset.forName(charsetName)
-        } catch (_: Exception) {
-            return null
-        }
+        val charset =
+            try {
+                Charset.forName(charsetName)
+            } catch (_: Exception) {
+                return null
+            }
 
         val bytes = ByteArrayOutputStream()
         var index = 0
@@ -55,20 +54,24 @@ data class ContentDisposition private constructor(
                 index += 3
             } else {
                 val isAttrChar =
-                    c in '0'..'9' || c in 'A'..'Z' || c in 'a'..'z' || c in setOf(
-                        '!',
-                        '#',
-                        '$',
-                        '&',
-                        '+',
-                        '-',
-                        '.',
-                        '^',
-                        '_',
-                        '`',
-                        '|',
-                        '~'
-                    )
+                    c in '0'..'9' ||
+                        c in 'A'..'Z' ||
+                        c in 'a'..'z' ||
+                        c in
+                        setOf(
+                            '!',
+                            '#',
+                            '$',
+                            '&',
+                            '+',
+                            '-',
+                            '.',
+                            '^',
+                            '_',
+                            '`',
+                            '|',
+                            '~',
+                        )
                 if (!isAttrChar) {
                     return null
                 }
@@ -80,9 +83,7 @@ data class ContentDisposition private constructor(
     }
 
     companion object {
-        fun parse(value: String): ContentDisposition {
-            return fromHeaderValue(HeaderValueParser.parseSingle(value))
-        }
+        fun parse(value: String): ContentDisposition = fromHeaderValue(HeaderValueParser.parseSingle(value))
 
         fun fromHeaderValue(headerValue: HeaderValue): ContentDisposition {
             val parameters = linkedMapOf<String, String>()
@@ -93,7 +94,7 @@ data class ContentDisposition private constructor(
 
             return ContentDisposition(
                 type = headerValue.value.lowercase(),
-                parameters = parameters
+                parameters = parameters,
             )
         }
     }

@@ -3,9 +3,8 @@ package io.github.minthem.noob.http.message
 @Suppress("unused")
 enum class HttpStatus(
     val code: Int,
-    val reasonPhrase: String
+    val reasonPhrase: String,
 ) {
-
     CONTINUE(100, "Continue"),
     SWITCHING_PROTOCOLS(101, "Switching Protocols"),
     PROCESSING(102, "Processing"),
@@ -66,35 +65,20 @@ enum class HttpStatus(
     INSUFFICIENT_STORAGE(507, "Insufficient Storage"),
     LOOP_DETECTED(508, "Loop Detected"),
     NOT_EXTENDED(510, "Not Extended"),
-    NETWORK_AUTHENTICATION_REQUIRED(511, "Network Authentication Required")
+    NETWORK_AUTHENTICATION_REQUIRED(511, "Network Authentication Required"),
     ;
 
+    fun isInformational(): Boolean = code in 100..199
 
-    fun isInformational(): Boolean {
-        return code in 100..199
-    }
+    fun isSuccess(): Boolean = code in 200..299
 
-    fun isSuccess(): Boolean {
-        return code in 200..299
-    }
+    fun isRedirection(): Boolean = code in 300..399
 
-    fun isRedirection(): Boolean {
-        return code in 300..399
-    }
+    fun isClientError(): Boolean = code in 400..499
 
-    fun isClientError(): Boolean {
-        return code in 400..499
-    }
+    fun isServerError(): Boolean = code in 500..599
 
-    fun isServerError(): Boolean {
-        return code in 500..599
-    }
+    fun isError(): Boolean = isClientError() || isServerError()
 
-    fun isError(): Boolean {
-        return isClientError() || isServerError()
-    }
-
-    override fun toString(): String {
-        return "$code $reasonPhrase"
-    }
+    override fun toString(): String = "$code $reasonPhrase"
 }

@@ -8,9 +8,8 @@ import java.io.EOFException
 import kotlin.text.iterator
 
 internal class HttpHeadersParser(
-    private val config: HttpLimitsConfig
+    private val config: HttpLimitsConfig,
 ) {
-
     fun parse(stream: ByteReadStream): HttpHeaders {
         val headers = MutableHttpHeaders()
         var state = HttpHeadersState.HEADER_NAME
@@ -85,20 +84,18 @@ internal class HttpHeadersParser(
         return headers
     }
 
-    private fun streamNext(stream: ByteReadStream): Byte {
-        return try {
+    private fun streamNext(stream: ByteReadStream): Byte =
+        try {
             stream.next()
         } catch (_: EOFException) {
             throw IllegalArgumentException("Unexpected end of stream in headers")
         }
-    }
 }
-
 
 private enum class HttpHeadersState {
     HEADER_NAME {
-        override fun next(b: Byte): HttpHeadersState {
-            return if (LOOKUP_TOKENS[b.toInt() and 0xFF]) {
+        override fun next(b: Byte): HttpHeadersState =
+            if (LOOKUP_TOKENS[b.toInt() and 0xFF]) {
                 HEADER_NAME
             } else if (b == COLON) {
                 HEADER_NAME_END
@@ -107,62 +104,49 @@ private enum class HttpHeadersState {
             } else {
                 INVALID
             }
-        }
     },
     HEADER_NAME_END {
-        override fun next(b: Byte): HttpHeadersState {
-            return if (LOOKUP_FIELD_VCHAR[b.toInt() and 0xFF] || b == SPACE || b == H_TAB) {
+        override fun next(b: Byte): HttpHeadersState =
+            if (LOOKUP_FIELD_VCHAR[b.toInt() and 0xFF] || b == SPACE || b == H_TAB) {
                 HEADER_VALUE
             } else if (b == CR) {
                 HEADER_END_CR
             } else {
                 INVALID
             }
-        }
     },
     HEADER_VALUE {
-        override fun next(b: Byte): HttpHeadersState {
-            return if (LOOKUP_FIELD_VCHAR[b.toInt()] || b == SPACE || b == H_TAB) {
+        override fun next(b: Byte): HttpHeadersState =
+            if (LOOKUP_FIELD_VCHAR[b.toInt()] || b == SPACE || b == H_TAB) {
                 HEADER_VALUE
             } else if (b == CR) {
                 HEADER_END_CR
             } else {
                 INVALID
             }
-        }
     },
     HEADER_END_CR {
-        override fun next(b: Byte): HttpHeadersState {
-            return if (b == LF) HEADER_END_LF else INVALID
-        }
+        override fun next(b: Byte): HttpHeadersState = if (b == LF) HEADER_END_LF else INVALID
     },
     HEADER_END_LF {
-        override fun next(b: Byte): HttpHeadersState {
-            return if (LOOKUP_TOKENS[b.toInt() and 0xFF]) {
+        override fun next(b: Byte): HttpHeadersState =
+            if (LOOKUP_TOKENS[b.toInt() and 0xFF]) {
                 HEADER_NAME
             } else if (b == CR) {
                 HEADER_SECTION_END_CR
             } else {
                 INVALID
             }
-        }
     },
     HEADER_SECTION_END_CR {
-        override fun next(b: Byte): HttpHeadersState {
-            return if (b == LF) HEADER_SECTION_END_LF else INVALID
-        }
+        override fun next(b: Byte): HttpHeadersState = if (b == LF) HEADER_SECTION_END_LF else INVALID
     },
     HEADER_SECTION_END_LF {
-        override fun next(b: Byte): HttpHeadersState {
-            return this
-        }
+        override fun next(b: Byte): HttpHeadersState = this
     },
     INVALID {
-        override fun next(b: Byte): HttpHeadersState {
-            return this
-        }
-    }
-    ;
+        override fun next(b: Byte): HttpHeadersState = this
+    }, ;
 
     abstract fun next(b: Byte): HttpHeadersState
 
@@ -173,16 +157,18 @@ private enum class HttpHeadersState {
         private const val CR = '\r'.code.toByte()
         private const val LF = '\n'.code.toByte()
 
-        private val LOOKUP_TOKENS = BooleanArray(256) { false }.apply {
-            for (i in "!#$%&'*+-.^_`|~") this[i.code] = true
-            for (i in '0'..'9') this[i.code] = true
-            for (i in 'A'..'Z') this[i.code] = true
-            for (i in 'a'..'z') this[i.code] = true
-        }
+        private val LOOKUP_TOKENS =
+            BooleanArray(256) { false }.apply {
+                for (i in "!#$%&'*+-.^_`|~") this[i.code] = true
+                for (i in '0'..'9') this[i.code] = true
+                for (i in 'A'..'Z') this[i.code] = true
+                for (i in 'a'..'z') this[i.code] = true
+            }
 
-        private val LOOKUP_FIELD_VCHAR = BooleanArray(256) { false }.apply {
-            for (i in 0x21..0x7E) this[i] = true // visible characters
-            for (i in 0x80..0xFF) this[i] = true // obs text
-        }
+        private val LOOKUP_FIELD_VCHAR =
+            BooleanArray(256) { false }.apply {
+                for (i in 0x21..0x7E) this[i] = true // visible characters
+                for (i in 0x80..0xFF) this[i] = true // obs text
+            }
     }
 }
