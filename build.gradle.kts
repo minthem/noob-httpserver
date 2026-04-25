@@ -3,8 +3,8 @@ import org.jlleitschuh.gradle.ktlint.reporter.ReporterType
 plugins {
     kotlin("jvm") version "2.3.0"
 
-    id("org.jetbrains.kotlinx.kover") version "0.9.+"
-    id("org.jlleitschuh.gradle.ktlint") version "14.+"
+    id("org.jetbrains.kotlinx.kover") version "0.9.8"
+    id("org.jlleitschuh.gradle.ktlint") version "14.2.0"
 }
 
 group = "io.github.minthem.noob-httpserver"
