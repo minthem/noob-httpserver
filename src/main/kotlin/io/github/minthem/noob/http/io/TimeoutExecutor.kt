@@ -5,22 +5,25 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 
 internal class TimeoutExecutor(
-    private val scheduler: ScheduledExecutorService
+    private val scheduler: ScheduledExecutorService,
 ) {
-
-    fun <T> run(timeoutMs: Long, block: () -> T): T {
+    fun <T> run(
+        timeoutMs: Long,
+        block: () -> T,
+    ): T {
         if (timeoutMs <= 0) {
             return block()
         }
 
         val currentThread = Thread.currentThread()
-        val future = scheduler.schedule({
-            currentThread.interrupt()
-        }, timeoutMs, TimeUnit.MILLISECONDS)
+        val future =
+            scheduler.schedule({
+                currentThread.interrupt()
+            }, timeoutMs, TimeUnit.MILLISECONDS)
 
         try {
             val result = block()
-            if(Thread.interrupted()) {
+            if (Thread.interrupted()) {
                 // TODO 専用の例外作ることを検討
                 throw TimeoutException("Operation timed out after $timeoutMs ms")
             }
@@ -29,7 +32,7 @@ internal class TimeoutExecutor(
         } catch (e: InterruptedException) {
             // TODO 専用の例外作ることを検討
             throw TimeoutException("Operation timed out after $timeoutMs ms")
-        }finally {
+        } finally {
             future.cancel(false)
             Thread.interrupted() // clear interrupted status
         }

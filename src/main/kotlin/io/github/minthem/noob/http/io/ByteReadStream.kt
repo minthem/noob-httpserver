@@ -5,7 +5,6 @@ import java.nio.ByteBuffer
 import java.nio.channels.ReadableByteChannel
 
 internal interface ByteReadStream {
-
     /**
      * Retrieves the next byte from the stream. If the buffer is empty, an internal refill
      * operation is triggered to fetch additional data from the underlying source.
@@ -33,12 +32,16 @@ internal interface ByteReadStream {
      * @return The number of bytes read or -1 if the end of the stream is reached.
      * @throws IndexOutOfBoundsException If the specified offset and length exceed the bounds of the destination array.
      */
-    fun read(dst: ByteArray, off: Int = 0, len: Int = dst.size): Int
+    fun read(
+        dst: ByteArray,
+        off: Int = 0,
+        len: Int = dst.size,
+    ): Int
 }
 
 internal class ByteChannelReadStream(
     private val channel: ReadableByteChannel,
-    private val buffer: ByteBuffer
+    private val buffer: ByteBuffer,
 ) : ByteReadStream {
     override fun next(): Byte {
         if (!buffer.hasRemaining()) {
@@ -60,7 +63,11 @@ internal class ByteChannelReadStream(
         return buffer.get(buffer.position()).toInt()
     }
 
-    override fun read(dst: ByteArray, off: Int, len: Int): Int {
+    override fun read(
+        dst: ByteArray,
+        off: Int,
+        len: Int,
+    ): Int {
         if (off < 0 || len < 0 || off + len > dst.size) {
             throw IndexOutOfBoundsException("offset: $off, length: $len, array size: ${dst.size}")
         }

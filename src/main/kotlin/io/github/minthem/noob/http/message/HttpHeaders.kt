@@ -1,8 +1,6 @@
 package io.github.minthem.noob.http.message
 
-
 sealed class HttpHeaders {
-
     protected abstract val values: Map<String, List<String>>
 
     operator fun get(key: String): String? {
@@ -30,9 +28,7 @@ sealed class HttpHeaders {
         return values == other.values
     }
 
-    override fun hashCode(): Int {
-        return values.hashCode()
-    }
+    override fun hashCode(): Int = values.hashCode()
 
     override fun toString(): String = values.toString()
 
@@ -52,8 +48,9 @@ sealed class HttpHeaders {
     }
 }
 
-class ImmutableHttpHeaders(initial: Map<String, List<String>>) : HttpHeaders() {
-
+class ImmutableHttpHeaders(
+    initial: Map<String, List<String>>,
+) : HttpHeaders() {
     override val values: Map<String, List<String>> = initializeMap(initial)
 
     override fun toImmutable(): ImmutableHttpHeaders = this
@@ -61,26 +58,36 @@ class ImmutableHttpHeaders(initial: Map<String, List<String>>) : HttpHeaders() {
     override fun toMutable(): MutableHttpHeaders = MutableHttpHeaders(values)
 }
 
-class MutableHttpHeaders(initial: Map<String, List<String>> = emptyMap()) : HttpHeaders() {
-
+class MutableHttpHeaders(
+    initial: Map<String, List<String>> = emptyMap(),
+) : HttpHeaders() {
     private val mutableValues = initializeMap(initial)
 
     override val values: Map<String, List<String>>
         get() = mutableValues
 
-    fun add(key: String, value: String) {
+    fun add(
+        key: String,
+        value: String,
+    ) {
         val normalizedKey = key.lowercase()
         mutableValues.getOrPut(normalizedKey) { mutableListOf() }.add(value)
     }
 
     fun add(vararg pairs: Pair<String, String>) = pairs.forEach { (key, value) -> add(key, value) }
 
-    fun addAll(key: String, values: List<String>) {
+    fun addAll(
+        key: String,
+        values: List<String>,
+    ) {
         val normalizedKey = key.lowercase()
         mutableValues.getOrPut(normalizedKey) { mutableListOf() }.addAll(values)
     }
 
-    operator fun set(key: String, value: String?) {
+    operator fun set(
+        key: String,
+        value: String?,
+    ) {
         val normalizedKey = key.lowercase()
         if (value == null) {
             remove(normalizedKey)

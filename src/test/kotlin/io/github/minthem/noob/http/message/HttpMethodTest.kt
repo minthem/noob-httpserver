@@ -5,7 +5,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class HttpMethodTest {
-
     @Test
     fun `fromString should return a valid HttpMethod`() {
         assertEquals(HttpMethod.GET, HttpMethod.fromString("GET"))
@@ -26,17 +25,19 @@ class HttpMethodTest {
 
     @Test
     fun `fromString should be case sensitive`() {
-        val exception = assertThrows<IllegalArgumentException> {
-            HttpMethod.fromString("get")
-        }
+        val exception =
+            assertThrows<IllegalArgumentException> {
+                HttpMethod.fromString("get")
+            }
         assertEquals("Invalid method: get", exception.message)
     }
 
     @Test
     fun `fromString should throw an exception when the method is invalid`() {
-        val exception = assertThrows<IllegalArgumentException> {
-            HttpMethod.fromString("INVALID")
-        }
+        val exception =
+            assertThrows<IllegalArgumentException> {
+                HttpMethod.fromString("INVALID")
+            }
         assertEquals("Invalid method: INVALID", exception.message)
     }
 }

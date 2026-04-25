@@ -14,11 +14,10 @@ import kotlin.io.path.outputStream
  * @param name The name associated with the multipart component.
  * @param headers The HTTP headers associated with the multipart component.
  */
-sealed class Multipart (
+sealed class Multipart(
     val name: String,
     val headers: HttpHeaders,
 ) {
-
     /**
      * Represents a form field in a multipart request.
      *
@@ -34,7 +33,7 @@ sealed class Multipart (
     class FormField(
         name: String,
         headers: HttpHeaders,
-        val value: String
+        val value: String,
     ) : Multipart(name, headers)
 
     /**
@@ -53,7 +52,6 @@ sealed class Multipart (
         val filename: String,
         internal val savePath: Path,
     ) : Multipart(name, headers) {
-
         /**
          * Provides an input stream to read the contents of the underlying file associated with this instance.
          *
@@ -68,13 +66,14 @@ sealed class Multipart (
          * If the file exists, its content will be overwritten.
          */
         fun copyTo(path: Path) {
-            path.outputStream(
-                StandardOpenOption.WRITE,
-                StandardOpenOption.CREATE,
-                StandardOpenOption.TRUNCATE_EXISTING
-            ).use {
-                asStream().copyTo(it)
-            }
+            path
+                .outputStream(
+                    StandardOpenOption.WRITE,
+                    StandardOpenOption.CREATE,
+                    StandardOpenOption.TRUNCATE_EXISTING,
+                ).use {
+                    asStream().copyTo(it)
+                }
         }
     }
 }

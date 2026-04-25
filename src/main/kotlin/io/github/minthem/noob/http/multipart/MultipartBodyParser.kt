@@ -1,9 +1,9 @@
 package io.github.minthem.noob.http.multipart
 
-import io.github.minthem.noob.http.message.contentDisposition
-import io.github.minthem.noob.http.message.contentType
 import io.github.minthem.noob.http.message.HttpHeaders
 import io.github.minthem.noob.http.message.MutableHttpHeaders
+import io.github.minthem.noob.http.message.contentDisposition
+import io.github.minthem.noob.http.message.contentType
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import java.io.OutputStream
@@ -12,7 +12,6 @@ import java.nio.channels.Channels
 import java.nio.file.Files
 import java.nio.file.StandardOpenOption
 import kotlin.io.path.outputStream
-
 
 /**
  * Parses multipart body content from an input stream, handling headers and boundaries.
@@ -28,9 +27,8 @@ import kotlin.io.path.outputStream
  */
 internal class MultipartBodyParser(
     private val stream: InputStream,
-    private val boundary: String
+    private val boundary: String,
 ) {
-
     private var firstPart = true
     private val boundaryEnd = "\r\n--$boundary".toByteArray()
     private val channel = Channels.newChannel(stream)
@@ -68,8 +66,9 @@ internal class MultipartBodyParser(
             throw IllegalArgumentException("Multipart body must contain a Content-Disposition header")
         }
 
-        val disposition = headers.contentDisposition
-            ?: throw IllegalArgumentException("Invalid Content-Disposition header")
+        val disposition =
+            headers.contentDisposition
+                ?: throw IllegalArgumentException("Invalid Content-Disposition header")
 
         val filename = disposition.filename
         val name = disposition.name ?: throw IllegalArgumentException("Invalid Content-Disposition header")
@@ -116,20 +115,21 @@ internal class MultipartBodyParser(
         val writeBuffer = ByteArray(1024 * 10) // TODO Parameterized
         var writeBufferUsed = 0
 
-        while(true) {
+        while (true) {
             val boundaryIndex = findByteSequence(boundaryEnd)
-            val bytesToRead = if (boundaryIndex == -1) {
-                // boundaryがバッファ内にまだ無い
-                // 読み込み済みデータ - boundaryサイズ分だけ後でreadする
-                val readLen = maxOf(buffer.remaining() - boundaryEnd.size, 0)
-                // 補充
-                refillBuffer()
-                readLen
-            } else {
-                boundaryIndex - buffer.position()
-            }
+            val bytesToRead =
+                if (boundaryIndex == -1) {
+                    // boundaryがバッファ内にまだ無い
+                    // 読み込み済みデータ - boundaryサイズ分だけ後でreadする
+                    val readLen = maxOf(buffer.remaining() - boundaryEnd.size, 0)
+                    // 補充
+                    refillBuffer()
+                    readLen
+                } else {
+                    boundaryIndex - buffer.position()
+                }
 
-            if(writeBuffer.size < writeBufferUsed + bytesToRead) {
+            if (writeBuffer.size < writeBufferUsed + bytesToRead) {
                 output.write(writeBuffer, 0, writeBufferUsed)
                 writeBufferUsed = 0
             }
@@ -144,12 +144,13 @@ internal class MultipartBodyParser(
     }
 
     private fun consumeBoundary() {
-        val boundary = if (firstPart) {
-            firstPart = false
-            "--$boundary".toByteArray()
-        } else {
-            "\r\n--$boundary".toByteArray()
-        }
+        val boundary =
+            if (firstPart) {
+                firstPart = false
+                "--$boundary".toByteArray()
+            } else {
+                "\r\n--$boundary".toByteArray()
+            }
 
         // boundary開始まで読み進める
         while (true) {

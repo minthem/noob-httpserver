@@ -3,12 +3,14 @@ package io.github.minthem.noob.http.util
 import java.io.ByteArrayOutputStream
 
 internal object UriDecoder {
-
     fun decodePath(path: String): String = decode(path, false)
 
     fun decodeQuery(query: String): String = decode(query, true)
 
-    private fun decode(data: String, decodePlusAsSpace: Boolean = false): String {
+    private fun decode(
+        data: String,
+        decodePlusAsSpace: Boolean = false,
+    ): String {
         val result = StringBuilder(data.length)
         val bytes = ByteArrayOutputStream()
         var pos = 0

@@ -7,9 +7,8 @@ import java.nio.charset.Charset
 data class MediaType private constructor(
     val type: String,
     val subtype: String,
-    val parameters: Map<String, String> = emptyMap()
+    val parameters: Map<String, String> = emptyMap(),
 ) {
-
     val charset: Charset? by lazy {
         parameters["charset"]?.let { Charset.forName(it) }
     }
@@ -20,19 +19,16 @@ data class MediaType private constructor(
         return typeMatch && subtypeMatch
     }
 
-    override fun toString(): String {
-        return if (parameters.isEmpty()) {
+    override fun toString(): String =
+        if (parameters.isEmpty()) {
             "$type/$subtype"
         } else {
             val params = parameters.entries.joinToString("; ") { "${it.key}=\"${it.value}\"" }
             "$type/$subtype; $params"
         }
-    }
 
     companion object {
-        fun parse(value: String): MediaType {
-            return fromHeaderValue(HeaderValueParser.parseSingle(value))
-        }
+        fun parse(value: String): MediaType = fromHeaderValue(HeaderValueParser.parseSingle(value))
 
         fun fromHeaderValue(headerValue: HeaderValue): MediaType {
             val fullType = headerValue.value.split("/", limit = 2)

@@ -5,9 +5,8 @@ import java.nio.ByteBuffer
 import java.nio.channels.ByteChannel
 
 class InMemoryByteChannel(
-    inputChunks: List<ByteArray>
+    inputChunks: List<ByteArray>,
 ) : ByteChannel {
-
     private var readableChunks = inputChunks.toList()
     private val written = ByteArrayOutputStream()
     private var open = true
@@ -36,8 +35,6 @@ class InMemoryByteChannel(
     fun writtenText(): String = written.toByteArray().toString(Charsets.UTF_8)
 
     companion object {
-        fun fromStrings(strings: List<String>): InMemoryByteChannel {
-            return InMemoryByteChannel(strings.map { it.toByteArray() })
-        }
+        fun fromStrings(strings: List<String>): InMemoryByteChannel = InMemoryByteChannel(strings.map { it.toByteArray() })
     }
 }

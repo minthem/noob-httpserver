@@ -7,7 +7,6 @@ import org.slf4j.helpers.BasicMarkerFactory
 import org.slf4j.spi.MDCAdapter
 import org.slf4j.spi.SLF4JServiceProvider
 
-
 class SimpleLoggingProvider : SLF4JServiceProvider {
     private val loggerFactory: ILoggerFactory = SimpleLoggerFactory()
     private val markerFactory: IMarkerFactory = BasicMarkerFactory()

@@ -9,10 +9,13 @@ import io.github.minthem.noob.http.testutil.SideEffectWritableChannel
 import java.io.IOException
 import java.time.ZoneId
 import java.time.ZonedDateTime
-import kotlin.test.*
+import kotlin.test.Test
+import kotlin.test.assertContains
+import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class HttpResponseWriterTest {
-
     private val config = BufferConfig()
     private val writer = HttpResponseWriter(config.responseHeaderBytes)
 
@@ -35,9 +38,10 @@ class HttpResponseWriterTest {
     @Test
     fun `writes 200 response with body`() {
         val channel = ByteArrayWritableChannel()
-        val response = HttpResponse.build {
-            body("hello")
-        }
+        val response =
+            HttpResponse.build {
+                body("hello")
+            }
         val now = fixedNow()
 
         writer.write(channel, HttpProtocol.HTTP_1_1, response, now)
@@ -53,10 +57,11 @@ class HttpResponseWriterTest {
     @Test
     fun `writes error status response`() {
         val channel = ByteArrayWritableChannel()
-        val response = HttpResponse.build {
-            status = HttpStatus.NOT_FOUND
-            body("not found")
-        }
+        val response =
+            HttpResponse.build {
+                status = HttpStatus.NOT_FOUND
+                body("not found")
+            }
         val now = fixedNow()
 
         writer.write(channel, HttpProtocol.HTTP_1_1, response, now)
@@ -70,10 +75,11 @@ class HttpResponseWriterTest {
     @Test
     fun `writes custom headers`() {
         val channel = ByteArrayWritableChannel()
-        val response = HttpResponse.build {
-            header("X-Test", "value")
-            body("hello")
-        }
+        val response =
+            HttpResponse.build {
+                header("X-Test", "value")
+                body("hello")
+            }
         val now = fixedNow()
 
         writer.write(channel, HttpProtocol.HTTP_1_1, response, now)
@@ -86,11 +92,12 @@ class HttpResponseWriterTest {
     @Test
     fun `writes repeated headers as multiple lines`() {
         val channel = ByteArrayWritableChannel()
-        val response = HttpResponse.build {
-            header("Set-Cookie", "a=1")
-            header("Set-Cookie", "b=2")
-            body("ok")
-        }
+        val response =
+            HttpResponse.build {
+                header("Set-Cookie", "a=1")
+                header("Set-Cookie", "b=2")
+                body("ok")
+            }
         val now = fixedNow()
 
         writer.write(channel, HttpProtocol.HTTP_1_1, response, now)
@@ -104,9 +111,10 @@ class HttpResponseWriterTest {
     @Test
     fun `adds date header when missing`() {
         val channel = ByteArrayWritableChannel()
-        val response = HttpResponse.build {
-            body("hello")
-        }
+        val response =
+            HttpResponse.build {
+                body("hello")
+            }
         val now = ZonedDateTime.of(2023, 1, 1, 9, 0, 0, 0, ZoneId.of("Asia/Tokyo"))
 
         writer.write(channel, HttpProtocol.HTTP_1_1, response, now)
@@ -119,10 +127,11 @@ class HttpResponseWriterTest {
     @Test
     fun `does not overwrite existing date header`() {
         val channel = ByteArrayWritableChannel()
-        val response = HttpResponse.build {
-            header("date", "Mon, 2 Jan 2023 00:00:00 GMT")
-            body("hello")
-        }
+        val response =
+            HttpResponse.build {
+                header("date", "Mon, 2 Jan 2023 00:00:00 GMT")
+                body("hello")
+            }
         val now = fixedNow()
 
         writer.write(channel, HttpProtocol.HTTP_1_1, response, now)
@@ -137,10 +146,11 @@ class HttpResponseWriterTest {
     fun `writes long header value across buffer boundaries`() {
         val channel = ByteArrayWritableChannel()
         val longValue = "a".repeat(3000)
-        val response = HttpResponse.build {
-            header("X-Long", longValue)
-            body("ok")
-        }
+        val response =
+            HttpResponse.build {
+                header("X-Long", longValue)
+                body("ok")
+            }
         val now = fixedNow()
 
         writer.write(channel, HttpProtocol.HTTP_1_1, response, now)
@@ -155,10 +165,11 @@ class HttpResponseWriterTest {
     fun `writes complete response even when partial writes occur`() {
         val channel = ByteArrayWritableChannel()
         val bodyText = "x".repeat(2000)
-        val response = HttpResponse.build {
-            header("X-Test", "value")
-            body(bodyText)
-        }
+        val response =
+            HttpResponse.build {
+                header("X-Test", "value")
+                body(bodyText)
+            }
         val now = fixedNow()
 
         writer.write(channel, HttpProtocol.HTTP_1_1, response, now)
@@ -174,9 +185,10 @@ class HttpResponseWriterTest {
     @Test
     fun `writes HTTP 1_0 status line`() {
         val channel = ByteArrayWritableChannel()
-        val response = HttpResponse.build {
-            body("hello")
-        }
+        val response =
+            HttpResponse.build {
+                body("hello")
+            }
         val now = fixedNow()
 
         writer.write(channel, HttpProtocol.HTTP_1_0, response, now)
@@ -190,14 +202,16 @@ class HttpResponseWriterTest {
     @Test
     fun `propagates exception when channel write fails`() {
         val channel = SideEffectWritableChannel { throw IOException("boom") }
-        val response = HttpResponse.build {
-            body("hello")
-        }
+        val response =
+            HttpResponse.build {
+                body("hello")
+            }
         val now = fixedNow()
 
-        val actual = assertFailsWith<IOException> {
-            writer.write(channel, HttpProtocol.HTTP_1_1, response, now)
-        }
+        val actual =
+            assertFailsWith<IOException> {
+                writer.write(channel, HttpProtocol.HTTP_1_1, response, now)
+            }
 
         assertTrue(actual.message!!.contains("boom"))
     }
@@ -205,14 +219,16 @@ class HttpResponseWriterTest {
     @Test
     fun `throws IllegalStateException when channel returns negative one`() {
         val channel = SideEffectWritableChannel { -1 }
-        val response = HttpResponse.build {
-            body("hello")
-        }
+        val response =
+            HttpResponse.build {
+                body("hello")
+            }
         val now = fixedNow()
 
-        val actual = assertFailsWith<IllegalStateException> {
-            writer.write(channel, HttpProtocol.HTTP_1_1, response, now)
-        }
+        val actual =
+            assertFailsWith<IllegalStateException> {
+                writer.write(channel, HttpProtocol.HTTP_1_1, response, now)
+            }
 
         assertTrue(actual.message!!.contains("Unexpected end of stream"))
     }
@@ -220,36 +236,35 @@ class HttpResponseWriterTest {
     @Test
     fun `propagates exception when body write fails`() {
         var writeCount = 0
-        val channel = SideEffectWritableChannel { buffer ->
-            writeCount++
+        val channel =
+            SideEffectWritableChannel { buffer ->
+                writeCount++
 
-            // 1回目はstatusLine + headersの書き込み、2回目以降はボディへの書き込みを想定
-            if (writeCount == 1) {
-                val remaining = buffer?.remaining() ?: 0
-                buffer?.position(buffer.position() + remaining)
-                remaining
-            } else {
-                throw IOException("body write failed")
+                // 1回目はstatusLine + headersの書き込み、2回目以降はボディへの書き込みを想定
+                if (writeCount == 1) {
+                    val remaining = buffer?.remaining() ?: 0
+                    buffer?.position(buffer.position() + remaining)
+                    remaining
+                } else {
+                    throw IOException("body write failed")
+                }
             }
-        }
 
-        val response = HttpResponse.build {
-            body("hello")
-        }
+        val response =
+            HttpResponse.build {
+                body("hello")
+            }
         val now = fixedNow()
 
-        val actual = assertFailsWith<IOException> {
-            writer.write(channel, HttpProtocol.HTTP_1_1, response, now)
-        }
+        val actual =
+            assertFailsWith<IOException> {
+                writer.write(channel, HttpProtocol.HTTP_1_1, response, now)
+            }
 
         assertTrue(actual.message!!.contains("body write failed"))
     }
 
-    private fun writtenText(channel: ByteArrayWritableChannel): String {
-        return channel.toByteArray().toString(Charsets.UTF_8)
-    }
+    private fun writtenText(channel: ByteArrayWritableChannel): String = channel.toByteArray().toString(Charsets.UTF_8)
 
-    private fun fixedNow(): ZonedDateTime {
-        return ZonedDateTime.of(2023, 1, 1, 0, 0, 0, 0, ZoneId.of("UTC"))
-    }
+    private fun fixedNow(): ZonedDateTime = ZonedDateTime.of(2023, 1, 1, 0, 0, 0, 0, ZoneId.of("UTC"))
 }

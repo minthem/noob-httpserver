@@ -6,7 +6,7 @@ import java.nio.channels.WritableByteChannel
 
 class ByteArrayWritableChannel(
     private val stream: ByteArrayOutputStream = ByteArrayOutputStream(),
-    private val bufferSize: Int = 512
+    private val bufferSize: Int = 512,
 ) : WritableByteChannel {
     override fun write(p0: ByteBuffer?): Int {
         p0 ?: return 0

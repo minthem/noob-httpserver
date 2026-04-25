@@ -7,12 +7,10 @@ import org.slf4j.helpers.MessageFormatter
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 
-
 class SimpleLogger(
     name: String,
-    private var level: Level = Level.INFO
+    private var level: Level = Level.INFO,
 ) : LegacyAbstractLogger() {
-
     init {
         this.name = name
     }
@@ -34,13 +32,14 @@ class SimpleLogger(
         marker: Marker?,
         messagePattern: String?,
         arguments: Array<out Any?>?,
-        throwable: Throwable?
+        throwable: Throwable?,
     ) {
-        val fmtMsg = if (arguments != null && messagePattern != null) {
-            MessageFormatter.arrayFormat(messagePattern, arguments).message
-        } else {
-            messagePattern ?: ""
-        }
+        val fmtMsg =
+            if (arguments != null && messagePattern != null) {
+                MessageFormatter.arrayFormat(messagePattern, arguments).message
+            } else {
+                messagePattern ?: ""
+            }
 
         val threadName = Thread.currentThread().name
         val fmtDatetime = formatter.format(ZonedDateTime.now())
@@ -48,7 +47,7 @@ class SimpleLogger(
         val outputBuilder = StringBuilder()
         outputBuilder.append(fmtDatetime)
         outputBuilder.append(" [${level?.name}] ")
-        outputBuilder.append(" [${threadName}] ")
+        outputBuilder.append(" [$threadName] ")
         outputBuilder.append(name)
         outputBuilder.append(" - ")
         outputBuilder.append(fmtMsg)
@@ -60,12 +59,9 @@ class SimpleLogger(
         println(outputBuilder.toString())
     }
 
-    private fun isLevelEnabled(level: Level): Boolean {
-        return level.toInt() >= this.level.toInt()
-    }
+    private fun isLevelEnabled(level: Level): Boolean = level.toInt() >= this.level.toInt()
 
     companion object {
         private val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
     }
-
 }

@@ -3,8 +3,9 @@ package io.github.minthem.noob.http.testutil
 import java.nio.ByteBuffer
 import java.nio.channels.ReadableByteChannel
 
-class FixedReadableByteChannel(private var bytes: List<ByteArray>) : ReadableByteChannel {
-
+class FixedReadableByteChannel(
+    private var bytes: List<ByteArray>,
+) : ReadableByteChannel {
     override fun read(p0: ByteBuffer): Int {
         val b = bytes.firstOrNull() ?: return -1
         bytes = bytes.drop(1)

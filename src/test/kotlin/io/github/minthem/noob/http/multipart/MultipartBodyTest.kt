@@ -11,7 +11,6 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 internal class MultipartBodyTest {
-
     /**
      * Tests the `part(name: String)` method which retrieves a specific multipart body part
      * by its name. If the part with the specified name is already read, it retrieves it from
@@ -19,7 +18,8 @@ internal class MultipartBodyTest {
      */
     @Test
     fun `test retrieving single part by name`() {
-        val input = """
+        val input =
+            """
             --boundary
             Content-Disposition: form-data; name="part1"
 
@@ -29,12 +29,13 @@ internal class MultipartBodyTest {
 
             value2
             --boundary--
-        """.trimIndent().replace("\n", "\r\n").toByteArray()
+            """.trimIndent().replace("\n", "\r\n").toByteArray()
 
-        val body = MultipartBody(
-            stream = ByteArrayInputStream(input),
-            boundary = "boundary"
-        )
+        val body =
+            MultipartBody(
+                stream = ByteArrayInputStream(input),
+                boundary = "boundary",
+            )
 
         val part = body.part("part1")
 
@@ -49,18 +50,20 @@ internal class MultipartBodyTest {
      */
     @Test
     fun `test retrieving non-existing part by name`() {
-        val input = """
+        val input =
+            """
             --boundary
             Content-Disposition: form-data; name="part1"
 
             value1
             --boundary--
-        """.trimIndent().replace("\n", "\r\n").toByteArray()
+            """.trimIndent().replace("\n", "\r\n").toByteArray()
 
-        val body = MultipartBody(
-            stream = ByteArrayInputStream(input),
-            boundary = "boundary"
-        )
+        val body =
+            MultipartBody(
+                stream = ByteArrayInputStream(input),
+                boundary = "boundary",
+            )
 
         val part = body.part("nonexistent")
 
@@ -74,7 +77,8 @@ internal class MultipartBodyTest {
      */
     @Test
     fun `test cached part retrieval`() {
-        val input = """
+        val input =
+            """
             --boundary
             Content-Disposition: form-data; name="part1"
 
@@ -84,12 +88,13 @@ internal class MultipartBodyTest {
 
             value2
             --boundary--
-        """.trimIndent().replace("\n", "\r\n").toByteArray()
+            """.trimIndent().replace("\n", "\r\n").toByteArray()
 
-        val body = MultipartBody(
-            stream = ByteArrayInputStream(input),
-            boundary = "boundary"
-        )
+        val body =
+            MultipartBody(
+                stream = ByteArrayInputStream(input),
+                boundary = "boundary",
+            )
 
         val part1 = body.part("part1")
         val part2 = body.part("part1") // Retrieve the same part again
@@ -105,7 +110,8 @@ internal class MultipartBodyTest {
      */
     @Test
     fun `test processing all parts with forEachPart`() {
-        val input = """
+        val input =
+            """
             --boundary
             Content-Disposition: form-data; name="part1"
 
@@ -115,12 +121,13 @@ internal class MultipartBodyTest {
 
             value2
             --boundary--
-        """.trimIndent().replace("\n", "\r\n").toByteArray()
+            """.trimIndent().replace("\n", "\r\n").toByteArray()
 
-        val body = MultipartBody(
-            stream = ByteArrayInputStream(input),
-            boundary = "boundary"
-        )
+        val body =
+            MultipartBody(
+                stream = ByteArrayInputStream(input),
+                boundary = "boundary",
+            )
 
         val parts = mutableListOf<Multipart>()
 
@@ -139,14 +146,16 @@ internal class MultipartBodyTest {
      */
     @Test
     fun `test forEachPart when stream has no parts`() {
-        val input = """
+        val input =
+            """
             --boundary--
-        """.trimIndent().replace("\n", "\r\n").toByteArray()
+            """.trimIndent().replace("\n", "\r\n").toByteArray()
 
-        val body = MultipartBody(
-            stream = ByteArrayInputStream(input),
-            boundary = "boundary"
-        )
+        val body =
+            MultipartBody(
+                stream = ByteArrayInputStream(input),
+                boundary = "boundary",
+            )
 
         val parts = mutableListOf<Multipart>()
 
@@ -161,18 +170,20 @@ internal class MultipartBodyTest {
      */
     @Test
     fun `test invalid multipart input without content-disposition`() {
-        val input = """
+        val input =
+            """
             --boundary
             Content-Type: text/plain
 
             invalid part
             --boundary--
-        """.trimIndent().replace("\n", "\r\n").toByteArray()
+            """.trimIndent().replace("\n", "\r\n").toByteArray()
 
-        val body = MultipartBody(
-            stream = ByteArrayInputStream(input),
-            boundary = "boundary"
-        )
+        val body =
+            MultipartBody(
+                stream = ByteArrayInputStream(input),
+                boundary = "boundary",
+            )
 
         assertFailsWith<IllegalArgumentException> {
             body.part("part1")
@@ -181,7 +192,8 @@ internal class MultipartBodyTest {
 
     @Test
     fun `test forEachPart after part should include cached and unread parts without duplication`() {
-        val input = """
+        val input =
+            """
             --boundary
             Content-Disposition: form-data; name="part1"
 
@@ -195,12 +207,13 @@ internal class MultipartBodyTest {
 
             value3
             --boundary--
-        """.trimIndent().replace("\n", "\r\n").toByteArray()
+            """.trimIndent().replace("\n", "\r\n").toByteArray()
 
-        val body = MultipartBody(
-            stream = ByteArrayInputStream(input),
-            boundary = "boundary"
-        )
+        val body =
+            MultipartBody(
+                stream = ByteArrayInputStream(input),
+                boundary = "boundary",
+            )
 
         val part2 = body.part("part2")
         assertNotNull(part2)
@@ -216,7 +229,8 @@ internal class MultipartBodyTest {
 
     @Test
     fun `test part after forEachPart should return cached part`() {
-        val input = """
+        val input =
+            """
             --boundary
             Content-Disposition: form-data; name="part1"
 
@@ -226,12 +240,13 @@ internal class MultipartBodyTest {
 
             value2
             --boundary--
-        """.trimIndent().replace("\n", "\r\n").toByteArray()
+            """.trimIndent().replace("\n", "\r\n").toByteArray()
 
-        val body = MultipartBody(
-            stream = ByteArrayInputStream(input),
-            boundary = "boundary"
-        )
+        val body =
+            MultipartBody(
+                stream = ByteArrayInputStream(input),
+                boundary = "boundary",
+            )
 
         val parts = mutableListOf<Multipart>()
         body.forEachPart { part -> parts.add(part) }
@@ -246,19 +261,21 @@ internal class MultipartBodyTest {
 
     @Test
     fun `test retrieving file upload part by name`() {
-        val input = """
+        val input =
+            """
             --boundary
             Content-Disposition: form-data; name="file"; filename="hello.txt"
             Content-Type: text/plain
 
             hello file
             --boundary--
-        """.trimIndent().replace("\n", "\r\n").toByteArray()
+            """.trimIndent().replace("\n", "\r\n").toByteArray()
 
-        val body = MultipartBody(
-            stream = ByteArrayInputStream(input),
-            boundary = "boundary"
-        )
+        val body =
+            MultipartBody(
+                stream = ByteArrayInputStream(input),
+                boundary = "boundary",
+            )
 
         val part = body.part("file")
 
@@ -271,7 +288,8 @@ internal class MultipartBodyTest {
 
     @Test
     fun `test duplicate part names should keep latest part in cache`() {
-        val input = """
+        val input =
+            """
             --boundary
             Content-Disposition: form-data; name="part1"
 
@@ -281,12 +299,13 @@ internal class MultipartBodyTest {
 
             second
             --boundary--
-        """.trimIndent().replace("\n", "\r\n").toByteArray()
+            """.trimIndent().replace("\n", "\r\n").toByteArray()
 
-        val body = MultipartBody(
-            stream = ByteArrayInputStream(input),
-            boundary = "boundary"
-        )
+        val body =
+            MultipartBody(
+                stream = ByteArrayInputStream(input),
+                boundary = "boundary",
+            )
 
         val parts = mutableListOf<Multipart>()
         body.forEachPart { part -> parts.add(part) }
@@ -303,19 +322,21 @@ internal class MultipartBodyTest {
     @Test
     fun `test close should clear cached parts and delete temp files`() {
         val largeContent = "a".repeat(1024 * 1024 + 1)
-        val input = """
+        val input =
+            """
             --boundary
             Content-Disposition: form-data; name="file"; filename="large.txt"
             Content-Type: text/plain
 
             $largeContent
             --boundary--
-        """.trimIndent().replace("\n", "\r\n").toByteArray()
+            """.trimIndent().replace("\n", "\r\n").toByteArray()
 
-        val body = MultipartBody(
-            stream = ByteArrayInputStream(input),
-            boundary = "boundary"
-        )
+        val body =
+            MultipartBody(
+                stream = ByteArrayInputStream(input),
+                boundary = "boundary",
+            )
 
         val part = body.part("file")
         assertNotNull(part)
@@ -335,18 +356,20 @@ internal class MultipartBodyTest {
 
     @Test
     fun `test close is safe when no file upload parts were read`() {
-        val input = """
+        val input =
+            """
             --boundary
             Content-Disposition: form-data; name="part1"
 
             value1
             --boundary--
-        """.trimIndent().replace("\n", "\r\n").toByteArray()
+            """.trimIndent().replace("\n", "\r\n").toByteArray()
 
-        val body = MultipartBody(
-            stream = ByteArrayInputStream(input),
-            boundary = "boundary"
-        )
+        val body =
+            MultipartBody(
+                stream = ByteArrayInputStream(input),
+                boundary = "boundary",
+            )
 
         body.part("part1")
         body.close()
@@ -355,19 +378,21 @@ internal class MultipartBodyTest {
 
     @Test
     fun `test file upload stream can be reused multiple times`() {
-        val input = """
+        val input =
+            """
             --boundary
             Content-Disposition: form-data; name="file"; filename="hello.txt"
             Content-Type: text/plain
 
             hello file
             --boundary--
-        """.trimIndent().replace("\n", "\r\n").toByteArray()
+            """.trimIndent().replace("\n", "\r\n").toByteArray()
 
-        val body = MultipartBody(
-            stream = ByteArrayInputStream(input),
-            boundary = "boundary"
-        )
+        val body =
+            MultipartBody(
+                stream = ByteArrayInputStream(input),
+                boundary = "boundary",
+            )
 
         val part = body.part("file")
         assertNotNull(part)
@@ -383,19 +408,21 @@ internal class MultipartBodyTest {
     @Test
     fun `test large file upload stream can be reused multiple times`() {
         val largeContent = "a".repeat(1024 * 1024 + 1)
-        val input = """
+        val input =
+            """
             --boundary
             Content-Disposition: form-data; name="file"; filename="large.txt"
             Content-Type: text/plain
 
             $largeContent
             --boundary--
-        """.trimIndent().replace("\n", "\r\n").toByteArray()
+            """.trimIndent().replace("\n", "\r\n").toByteArray()
 
-        val body = MultipartBody(
-            stream = ByteArrayInputStream(input),
-            boundary = "boundary"
-        )
+        val body =
+            MultipartBody(
+                stream = ByteArrayInputStream(input),
+                boundary = "boundary",
+            )
 
         val part = body.part("file")
         assertNotNull(part)
@@ -410,19 +437,21 @@ internal class MultipartBodyTest {
 
     @Test
     fun `copyTo copies file contents correctly`() {
-        val input = """
+        val input =
+            """
             --boundary
             Content-Disposition: form-data; name="file"; filename="hello.txt"
             Content-Type: text/plain
 
             hello file
             --boundary--
-        """.trimIndent().replace("\n", "\r\n").toByteArray()
+            """.trimIndent().replace("\n", "\r\n").toByteArray()
 
-        val body = MultipartBody(
-            stream = ByteArrayInputStream(input),
-            boundary = "boundary"
-        )
+        val body =
+            MultipartBody(
+                stream = ByteArrayInputStream(input),
+                boundary = "boundary",
+            )
 
         val part = body.part("file")
         assertNotNull(part)
@@ -438,19 +467,21 @@ internal class MultipartBodyTest {
     @Test
     fun `copyTo overwrites existing file contents`() {
         val content = "original content"
-        val input = """
+        val input =
+            """
             --boundary
             Content-Disposition: form-data; name="file"; filename="hello.txt"
             Content-Type: text/plain
-        
+            
             $content
             --boundary--
-        """.trimIndent().replace("\n", "\r\n").toByteArray()
+            """.trimIndent().replace("\n", "\r\n").toByteArray()
 
-        val body = MultipartBody(
-            stream = ByteArrayInputStream(input),
-            boundary = "boundary"
-        )
+        val body =
+            MultipartBody(
+                stream = ByteArrayInputStream(input),
+                boundary = "boundary",
+            )
 
         val part = body.part("file")
         assertNotNull(part)
@@ -468,19 +499,21 @@ internal class MultipartBodyTest {
     @Test
     fun `large form field across buffer boundary is parsed correctly`() {
         val largeContent = "a".repeat(4096 * 2 + 123)
-        val input = """
+        val input =
+            """
             --boundary
             Content-Disposition: form-data; name="message"
             Content-Type: text/plain
-        
+            
             $largeContent
             --boundary--
-        """.trimIndent().replace("\n", "\r\n").toByteArray()
+            """.trimIndent().replace("\n", "\r\n").toByteArray()
 
-        val body = MultipartBody(
-            stream = ByteArrayInputStream(input),
-            boundary = "boundary"
-        )
+        val body =
+            MultipartBody(
+                stream = ByteArrayInputStream(input),
+                boundary = "boundary",
+            )
 
         val part = body.part("message")
 
@@ -493,19 +526,21 @@ internal class MultipartBodyTest {
     @Test
     fun `large file upload across buffer boundary can be copied correctly`() {
         val largeContent = "b".repeat(4096 * 2 + 123)
-        val input = """
+        val input =
+            """
             --boundary
             Content-Disposition: form-data; name="file"; filename="large.txt"
             Content-Type: text/plain
-        
+            
             $largeContent
             --boundary--
-        """.trimIndent().replace("\n", "\r\n").toByteArray()
+            """.trimIndent().replace("\n", "\r\n").toByteArray()
 
-        val body = MultipartBody(
-            stream = ByteArrayInputStream(input),
-            boundary = "boundary"
-        )
+        val body =
+            MultipartBody(
+                stream = ByteArrayInputStream(input),
+                boundary = "boundary",
+            )
 
         val part = body.part("file")
 

@@ -4,14 +4,10 @@ import io.github.minthem.noob.http.multipart.ContentDisposition
 
 data class HeaderValue(
     val value: String,
-    val parameters: Map<String, String?> = emptyMap()
-) {
+    val parameters: Map<String, String?> = emptyMap(),
+)
 
-}
-
-private fun parseContentType(headers: HttpHeaders): MediaType? {
-    return headers["Content-Type"]?.let { MediaType.parse(it) }
-}
+private fun parseContentType(headers: HttpHeaders): MediaType? = headers["Content-Type"]?.let { MediaType.parse(it) }
 
 val HttpHeaders.contentType: MediaType?
     get() = parseContentType(this)
@@ -22,14 +18,14 @@ var MutableHttpHeaders.contentType: MediaType?
         this["Content-Type"] = value?.toString()
     }
 
-
 private fun parseContentLength(headers: HttpHeaders): Long? {
     val values = headers.getAll("Content-Length")
     if (values.isEmpty()) return null
     require(values.size == 1) { "Multiple Content-Length headers are not allowed" }
 
-    val value = values.single().toLongOrNull()
-        ?: throw IllegalArgumentException("Invalid Content-Length")
+    val value =
+        values.single().toLongOrNull()
+            ?: throw IllegalArgumentException("Invalid Content-Length")
 
     require(value >= 0) { "Content-Length must be greater than or equal to 0" }
     return value
@@ -45,9 +41,10 @@ var MutableHttpHeaders.contentLength: Long?
         this["Content-Length"] = value?.toString()
     }
 
-private fun parseContentDisposition(headers: HttpHeaders): ContentDisposition? {
-    return headers["Content-Disposition"]?.let { ContentDisposition.parse(it) }
-}
+private fun parseContentDisposition(headers: HttpHeaders): ContentDisposition? =
+    headers["Content-Disposition"]?.let {
+        ContentDisposition.parse(it)
+    }
 
 val HttpHeaders.contentDisposition: ContentDisposition?
     get() = parseContentDisposition(this)

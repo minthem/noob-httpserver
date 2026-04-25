@@ -4,9 +4,8 @@ import io.github.minthem.noob.http.lifecycle.HookId
 
 class LifecycleException internal constructor(
     message: String? = null,
-    val causes: List<Pair<HookId, Throwable>> = emptyList()
-): RuntimeException(message) {
-
+    val causes: List<Pair<HookId, Throwable>> = emptyList(),
+) : RuntimeException(message) {
     override fun toString(): String {
         val messageBuilder = StringBuilder()
 
@@ -17,7 +16,5 @@ class LifecycleException internal constructor(
         }
 
         return messageBuilder.toString().trimEnd()
-
     }
-
 }

@@ -1,12 +1,14 @@
 package io.github.minthem.noob.http.router
 
-internal enum class SegmentKind(val weight: Int) {
+internal enum class SegmentKind(
+    val weight: Int,
+) {
     STATIC(2),
-    PARAM(1), ;
+    PARAM(1),
 }
 
 internal data class PathSpecificity(
-    val segments: List<SegmentKind>
+    val segments: List<SegmentKind>,
 ) : Comparable<PathSpecificity> {
     override fun compareTo(other: PathSpecificity): Int {
         // 固定文字列がより早い位置に来たやつを優先
@@ -31,13 +33,15 @@ internal data class PathSpecificity(
     fun append(other: PathSpecificity): PathSpecificity = PathSpecificity(segments + other.segments)
 
     private fun countStatic(): Int = segments.count { it == SegmentKind.STATIC }
+
     private fun countParam(): Int = segments.count { it == SegmentKind.PARAM }
 
     companion object {
         fun fromPattern(path: String): PathSpecificity {
-            val segments = path.split('/').filter { it.isNotBlank() }.map {
-                if (it.startsWith("{") && it.endsWith("}")) SegmentKind.PARAM else SegmentKind.STATIC
-            }
+            val segments =
+                path.split('/').filter { it.isNotBlank() }.map {
+                    if (it.startsWith("{") && it.endsWith("}")) SegmentKind.PARAM else SegmentKind.STATIC
+                }
             return PathSpecificity(segments)
         }
     }

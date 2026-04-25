@@ -6,7 +6,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class HttpStatusTest {
-
     @Test
     fun `test isInformational returns true for informational status codes`() {
         val status = HttpStatus.CONTINUE
