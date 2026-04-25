@@ -1,0 +1,62 @@
+name: Publish to Maven Central
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish (Snapshot on main, Release on tag)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Java 25
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: gradle
+
+      - name: Cache Gradle Build Cache
+        uses: actions/cache@v5
+        with:
+          path: ~/.gradle/caches/build-cache-1
+          key: gradle-build-cache-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-build-cache-${{ runner.os }}
+
+      - name: Set CI_TAG
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            echo "CI_TAG=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+          else
+            SHORT_SHA=$(git rev-parse --short HEAD)
+            echo "CI_TAG=0.0.1-${SHORT_SHA}-SNAPSHOT" >> "$GITHUB_ENV"
+          fi
+
+      - name: Import GPG key
+        run: |
+          echo "$GPG_PRIVATE_KEY" | base64 --decode | gpg --import --no-tty --batch --yes
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+
+      - name: Publish to Maven Central
+        run: ./gradlew publishAllPublicationsToMavenCentralRepository --no-daemon --info
+        env:
+          MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
