@@ -6,7 +6,6 @@ plugins {
     id("org.jetbrains.kotlinx.kover") version "0.9.8"
     id("org.jlleitschuh.gradle.ktlint") version "14.2.0"
     id("com.vanniktech.maven.publish") version "0.36.0"
-    id("signing")
 }
 
 group = "io.github.minthem"
@@ -79,11 +78,4 @@ mavenPublishing {
             url = "https://github.com/minthem/noob-httpserver"
         }
     }
-}
-
-signing {
-    useInMemoryPgpKeys(
-        System.getenv("GPG_PRIVATE_KEY"),
-        System.getenv("GPG_PASSPHRASE"),
-    )
 }
