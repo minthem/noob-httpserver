@@ -9,10 +9,10 @@ data class MediaType private constructor(
     val subtype: String,
     val parameters: Map<String, String> = emptyMap(),
 ) {
-    val charset: Charset by lazy {
+    val charset: Charset? by lazy {
         parameters["charset"]?.let {
             Charset.forName(it)
-        } ?: Charsets.UTF_8
+        }
     }
 
     fun isCompatibleWith(other: MediaType): Boolean {
@@ -21,9 +21,7 @@ data class MediaType private constructor(
         return typeMatch && subtypeMatch
     }
 
-    fun withCharset(
-        charset: Charset,
-    ): MediaType = copy(parameters = parameters + ("charset" to charset.name().lowercase()))
+    fun withCharset(charset: Charset): MediaType = copy(parameters = parameters + ("charset" to charset.name().lowercase()))
 
     override fun toString(): String =
         if (parameters.isEmpty()) {
@@ -48,6 +46,7 @@ data class MediaType private constructor(
         }
 
         val TEXT_PLAIN = MediaType("text", "plain")
+        val TEXT_HTML = MediaType("text", "html")
         val MULTIPART_FORM_DATA = MediaType("multipart", "form-data")
         val OCTET_STREAM = MediaType("application", "octet-stream")
     }
