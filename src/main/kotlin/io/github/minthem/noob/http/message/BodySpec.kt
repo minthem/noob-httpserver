@@ -33,14 +33,12 @@ sealed interface BodySpec {
         val path: Path,
         val charset: Charset = Charsets.UTF_8,
     ) : BodySpec {
-        private val type by lazy {
+        override val contentLength: Long by lazy { path.fileSize() }
+        override val defaultContentType: MediaType by lazy {
             val t = Files.probeContentType(path)
             t?.let { MediaType.parse(it).withCharset(charset) }
                 ?: MediaType.TEXT_PLAIN.withCharset(charset)
         }
-
-        override val contentLength: Long = path.fileSize()
-        override val defaultContentType: MediaType = type
     }
 
     class Streaming(

@@ -40,7 +40,9 @@ data class MediaType private constructor(
             val type = fullType.getOrElse(0) { "*" }.lowercase()
             val subtype = fullType.getOrElse(1) { "*" }.lowercase()
 
-            val parameters = headerValue.parameters.mapValues { (_, v) -> v ?: "" }
+            val parameters =
+                headerValue.parameters
+                    .mapValues { (_, v) -> v ?: "" }
 
             return MediaType(type, subtype, parameters)
         }
