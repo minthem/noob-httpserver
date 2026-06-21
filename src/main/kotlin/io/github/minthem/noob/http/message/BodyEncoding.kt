@@ -3,7 +3,8 @@ package io.github.minthem.noob.http.message
 import io.github.minthem.noob.http.parser.HeaderValueParser
 import io.github.minthem.noob.http.parser.HeaderValueSplitter
 
-class BodyEncoding private constructor(
+@ConsistentCopyVisibility
+data class BodyEncoding private constructor(
     val type: String,
     val quality: Double? = null,
 ) : Comparable<BodyEncoding> {
@@ -42,9 +43,9 @@ class BodyEncoding private constructor(
 
             val parsedQuality =
                 try {
-                    quality?.toDouble()?.also { p ->
-                        if (p !in 0.0..1.0) {
-                            throw IllegalArgumentException("Invalid body encoding quality value (must be between 0.0 and 1.0): $p")
+                    quality?.toDouble()?.also { q ->
+                        if (q !in 0.0..1.0) {
+                            throw IllegalArgumentException("Invalid body encoding quality value (must be between 0.0 and 1.0): $q")
                         }
                     }
                 } catch (e: NumberFormatException) {
