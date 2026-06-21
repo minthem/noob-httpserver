@@ -1,7 +1,5 @@
 package io.github.minthem.noob.http.message
 
-import io.github.minthem.noob.http.server.BodyWriteExecutor
-import io.github.minthem.noob.http.server.BodyWriteExecutorFactory
 import io.github.minthem.noob.http.util.CloseableSequence
 import io.github.minthem.noob.http.util.asCloseable
 import java.nio.charset.Charset
@@ -10,7 +8,7 @@ import java.nio.file.Path
 class HttpResponse private constructor(
     val status: HttpStatus,
     val headers: HttpHeaders,
-    internal val body: BodyWriteExecutor,
+    internal val body: BodyProducer,
 ) {
     class Builder internal constructor() {
         var status: HttpStatus = HttpStatus.OK
@@ -41,37 +39,18 @@ class HttpResponse private constructor(
             charset: Charset = Charsets.UTF_8,
         ) = apply { body = BodySpec.File(path, charset) }
 
-        fun body(source: CloseableSequence<ByteArray>) = apply { body = BodySpec.Chunked(source) }
+        fun body(source: CloseableSequence<ByteArray>) = apply { body = BodySpec.Streaming(source) }
 
         fun body(
             source: CloseableSequence<String>,
             charset: Charset = Charsets.UTF_8,
         ) = apply {
-            body = BodySpec.Chunked(source.map { it.toByteArray(charset) }.asCloseable { source.close() })
+            body = BodySpec.Streaming(source.map { it.toByteArray(charset) }.asCloseable { source.close() })
         }
 
         fun build(): HttpResponse {
-            val executor = BodyWriteExecutorFactory.create(body)
-
-            if ("Content-Type" !in headers) {
-                executor.defaultContentType()?.let {
-                    headers.contentType = it
-                }
-            }
-
-            if (body is BodySpec.Chunked) {
-                headers["Transfer-Encoding"] = "chunked"
-                if ("Content-Length" in headers) {
-                    headers.remove("Content-Length")
-                }
-            } else {
-                executor.contentLength()?.let { headers["Content-Length"] = it.toString() }
-                if ("Transfer-Encoding" in headers) {
-                    headers.remove("Transfer-Encoding")
-                }
-            }
-
-            return HttpResponse(status, headers, executor)
+            val producer = BodyProducerFactory.create(body)
+            return HttpResponse(status, headers, producer)
         }
     }
 

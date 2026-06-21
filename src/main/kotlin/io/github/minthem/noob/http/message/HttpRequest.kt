@@ -6,10 +6,10 @@ import java.io.OutputStream
 internal class HttpRequest(
     internal val method: HttpMethod,
     internal val path: RequestTarget,
-    internal val protocol: HttpProtocol,
-    internal val headers: HttpHeaders,
+    override val protocol: HttpProtocol,
+    override val headers: HttpHeaders,
     internal val bodyStream: InputStream,
-) {
+) : RequestMetadata {
     fun withPath(newPath: RequestTarget): HttpRequest = HttpRequest(method, newPath, protocol, headers, bodyStream)
 
     fun drainBody() {
