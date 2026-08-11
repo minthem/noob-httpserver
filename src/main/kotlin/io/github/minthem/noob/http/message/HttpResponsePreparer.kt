@@ -56,12 +56,20 @@ internal class PreparedHttpResponse internal constructor(
 )
 
 internal class ContentNegotiator(
-    private val allowedEncodings: List<String> = listOf("gzip", "identity"),
+    encoders: Map<String, BodyEncoder> = emptyMap(),
 ) {
+    private val encoders = mapOf("identity" to DefaultBodyEncoder()) + encoders
+
     fun selectEncoder(request: RequestMetadata): BodyEncoder {
-        val requestEncoding = request.headers.acceptEncoding?.sortedByDescending { it }
-        val selected = requestEncoding?.find { it.type in allowedEncodings } ?: BodyEncoding.IDENTITY
-        return BodyEncoderFactory.create(selected)
+        val selected =
+            request.headers.acceptEncoding
+                ?.asSequence()
+                ?.filter { (it.quality ?: 1.0) > 0.0 }
+                ?.sortedDescending()
+                ?.mapNotNull { encoders[it.type] }
+                ?.firstOrNull()
+
+        return selected ?: DefaultBodyEncoder()
     }
 }
 

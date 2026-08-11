@@ -20,6 +20,7 @@ internal class ClientSessionHandler(
     private val timeoutExecutor: TimeoutExecutor,
     private val timeoutConfig: TimeoutConfig,
     private val requestBufferSize: Int,
+    private val responsePreparer: HttpResponsePreparer = HttpResponsePreparer(),
 ) {
     fun handle(context: ConnectionContext) {
         logger.info("--------------- Start new session. ---------------")
@@ -44,7 +45,6 @@ internal class ClientSessionHandler(
                         val request = result.request
                         val response = result.response
 
-                        val responsePreparer = HttpResponsePreparer()
                         val preparedResponse = responsePreparer.prepare(request, response)
 
                         writer.write(channel, preparedResponse)
@@ -96,7 +96,7 @@ internal class ClientSessionHandler(
             if (!socket.isOpen) {
                 logger.error("Connection closed by client. {}", e.message, e)
             } else {
-                val prepared = HttpResponsePreparer().prepare(FallbackRequestMetadata(), e.httpResponse)
+                val prepared = responsePreparer.prepare(FallbackRequestMetadata(), e.httpResponse)
                 writer.write(channel, prepared)
             }
         } catch (e: Exception) {
@@ -115,7 +115,7 @@ internal class ClientSessionHandler(
                 status = HttpStatus.INTERNAL_SERVER_ERROR
                 header("connection", "close")
             }
-        val prepared = HttpResponsePreparer().prepare(FallbackRequestMetadata(), response)
+        val prepared = responsePreparer.prepare(FallbackRequestMetadata(), response)
         writer.write(channel, prepared)
     }
 

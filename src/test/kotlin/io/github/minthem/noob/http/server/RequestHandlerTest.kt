@@ -1,5 +1,7 @@
 package io.github.minthem.noob.http.server
 
+import io.github.minthem.noob.http.addon.AddonRegistry
+import io.github.minthem.noob.http.addon.ServerAddon
 import io.github.minthem.noob.http.config.ServerConfig
 import io.github.minthem.noob.http.exception.HttpResponseException
 import io.github.minthem.noob.http.io.ByteChannelReadStream
@@ -64,6 +66,58 @@ class RequestHandlerTest {
         assertEquals(RequestTarget("/hello"), actual.request.path)
         assertEquals(HttpProtocol.HTTP_1_1, actual.request.protocol)
         assertEquals(HttpStatus.OK, actual.response.status)
+    }
+
+    @Test
+    fun `process executes registered interceptor around route handler`() {
+        val events = mutableListOf<String>()
+        val addonRegistry =
+            AddonRegistry(
+                listOf(
+                    ServerAddon { registrar ->
+                        registrar.interceptRequests { context, next ->
+                            events.add("before:${context.path}")
+                            try {
+                                next()
+                            } finally {
+                                events.add("after")
+                            }
+                        }
+                    },
+                ),
+            )
+        val registry =
+            RouterRegistry().also {
+                it.register(
+                    Router {
+                        get("/intercepted") { _ ->
+                            events.add("handler")
+                            HttpResponse.build { }
+                        }
+                    },
+                )
+            }
+        val handler =
+            RequestHandler(
+                parser = requestParser,
+                routeResolver = RouteResolver(registry),
+                interceptRequest = addonRegistry::interceptRequest,
+            )
+        val stream =
+            ByteChannelReadStream(
+                FixedReadableByteChannel.fromStrings(
+                    listOf(
+                        "GET /intercepted HTTP/1.1\r\n",
+                        "host: localhost\r\n",
+                        "\r\n",
+                    ),
+                ),
+                ByteBuffer.allocate(1024).flip(),
+            )
+
+        handler.process(stream)
+
+        assertEquals(listOf("before:/intercepted", "handler", "after"), events)
     }
 
     @Test
