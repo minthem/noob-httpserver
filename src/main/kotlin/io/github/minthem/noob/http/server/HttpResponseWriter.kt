@@ -1,39 +1,28 @@
 package io.github.minthem.noob.http.server
 
-import io.github.minthem.noob.http.message.HttpProtocol
-import io.github.minthem.noob.http.message.HttpResponse
+import io.github.minthem.noob.http.message.PreparedHttpResponse
 import java.nio.ByteBuffer
 import java.nio.channels.WritableByteChannel
 import java.nio.charset.Charset
-import java.time.ZoneId
-import java.time.ZonedDateTime
-import java.time.format.DateTimeFormatter
 
 internal class HttpResponseWriter(
     private val responseHeaderBufferSize: Int,
 ) {
     fun write(
         writeChannel: WritableByteChannel,
-        protocol: HttpProtocol,
-        httpResponse: HttpResponse,
-        now: ZonedDateTime = ZonedDateTime.now(ZoneId.of("UTC")),
+        preparedHttpResponse: PreparedHttpResponse,
     ) {
         val buffer = ByteBuffer.allocate(responseHeaderBufferSize)
 
         ByteWriter(writeChannel, buffer).use {
-            it.write(protocol.version())
+            it.write(preparedHttpResponse.protocol.version())
             it.write(SPACE)
-            it.write(httpResponse.status.code.toString())
+            it.write(preparedHttpResponse.status.code.toString())
             it.write(SPACE)
-            it.write(httpResponse.status.reasonPhrase)
+            it.write(preparedHttpResponse.status.reasonPhrase)
             it.write(CRLF)
 
-            val headers = httpResponse.headers.toMutable()
-            if ("date" !in headers) {
-                val utc = now.withZoneSameInstant(ZoneId.of("UTC"))
-                headers["date"] = utc.format(FIELD_DATE_FORMATTER)
-            }
-
+            val headers = preparedHttpResponse.headers
             headers.forEach { key, values ->
                 values.forEach { value ->
                     it.write(key)
@@ -45,15 +34,13 @@ internal class HttpResponseWriter(
             it.write(CRLF)
         }
 
-        httpResponse.body.writeTo(writeChannel)
+        preparedHttpResponse.bodyWriter.write(writeChannel)
     }
 
     companion object {
         private val CRLF = "\r\n".toByteArray()
         private val SPACE = " ".toByteArray()
         private val FIELD_SEPARATOR = ": ".toByteArray()
-
-        private val FIELD_DATE_FORMATTER = DateTimeFormatter.RFC_1123_DATE_TIME
     }
 }
 

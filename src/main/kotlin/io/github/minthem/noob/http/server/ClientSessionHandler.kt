@@ -5,8 +5,9 @@ import io.github.minthem.noob.http.exception.HttpResponseException
 import io.github.minthem.noob.http.io.ByteChannelReadStream
 import io.github.minthem.noob.http.io.TimeoutByteChannel
 import io.github.minthem.noob.http.io.TimeoutExecutor
-import io.github.minthem.noob.http.message.HttpProtocol
+import io.github.minthem.noob.http.message.FallbackRequestMetadata
 import io.github.minthem.noob.http.message.HttpResponse
+import io.github.minthem.noob.http.message.HttpResponsePreparer
 import io.github.minthem.noob.http.message.HttpStatus
 import org.slf4j.LoggerFactory
 import java.nio.ByteBuffer
@@ -19,6 +20,7 @@ internal class ClientSessionHandler(
     private val timeoutExecutor: TimeoutExecutor,
     private val timeoutConfig: TimeoutConfig,
     private val requestBufferSize: Int,
+    private val responsePreparer: HttpResponsePreparer = HttpResponsePreparer(),
 ) {
     fun handle(context: ConnectionContext) {
         logger.info("--------------- Start new session. ---------------")
@@ -43,7 +45,9 @@ internal class ClientSessionHandler(
                         val request = result.request
                         val response = result.response
 
-                        writer.write(channel, request.protocol, response)
+                        val preparedResponse = responsePreparer.prepare(request, response)
+
+                        writer.write(channel, preparedResponse)
 
                         keepAliveManager.shouldKeepAlive(
                             request,
@@ -92,7 +96,8 @@ internal class ClientSessionHandler(
             if (!socket.isOpen) {
                 logger.error("Connection closed by client. {}", e.message, e)
             } else {
-                writer.write(channel, HttpProtocol.HTTP_1_1, e.httpResponse)
+                val prepared = responsePreparer.prepare(FallbackRequestMetadata(), e.httpResponse)
+                writer.write(channel, prepared)
             }
         } catch (e: Exception) {
             if (socket.isOpen) {
@@ -110,7 +115,8 @@ internal class ClientSessionHandler(
                 status = HttpStatus.INTERNAL_SERVER_ERROR
                 header("connection", "close")
             }
-        writer.write(channel, HttpProtocol.HTTP_1_1, response)
+        val prepared = responsePreparer.prepare(FallbackRequestMetadata(), response)
+        writer.write(channel, prepared)
     }
 
     companion object {

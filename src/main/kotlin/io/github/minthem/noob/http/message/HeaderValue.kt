@@ -54,3 +54,33 @@ var MutableHttpHeaders.contentDisposition: ContentDisposition?
     set(value) {
         this["Content-Disposition"] = value?.toString()
     }
+
+private fun parseAcceptEncoding(headers: HttpHeaders): List<BodyEncoding>? =
+    headers.getJoined("Accept-Encoding")?.let {
+        BodyEncoding.parseAll(it)
+    }
+
+val HttpHeaders.acceptEncoding: List<BodyEncoding>?
+    get() = parseAcceptEncoding(this)
+
+var MutableHttpHeaders.acceptEncoding: List<BodyEncoding>?
+    get() = parseAcceptEncoding(this)
+    set(value) {
+        val joined = value?.joinToString(",") { it.toString() }
+        this["Accept-Encoding"] = if (joined.isNullOrEmpty()) null else joined
+    }
+
+private fun parseContentEncoding(headers: HttpHeaders): List<BodyEncoding>? =
+    headers.getJoined("Content-Encoding")?.let {
+        BodyEncoding.parseAll(it)
+    }
+
+val HttpHeaders.contentEncoding: List<BodyEncoding>?
+    get() = parseContentEncoding(this)
+
+var MutableHttpHeaders.contentEncoding: List<BodyEncoding>?
+    get() = parseContentEncoding(this)
+    set(value) {
+        val joined = value?.joinToString(",") { it.toString() }
+        this["Content-Encoding"] = if (joined.isNullOrEmpty()) null else joined
+    }
