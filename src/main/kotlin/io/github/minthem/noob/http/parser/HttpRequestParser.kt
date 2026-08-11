@@ -19,6 +19,7 @@ import java.io.InputStream
 internal class HttpRequestParser(
     private val headerParser: HttpHeadersParser,
     private val config: HttpLimitsConfig,
+    private val bodyDecoder: RequestBodyDecoder = RequestBodyDecoder { _, source -> source },
 ) {
     fun parse(stream: ByteReadStream): HttpRequest {
         try {
@@ -26,7 +27,8 @@ internal class HttpRequestParser(
             val requestTarget = readRequestTarget(stream)
             val protocol = readProtocol(stream)
             val headers = readHeaders(stream)
-            val bodyStream = getInputStreamForRequestBody(stream, headers)
+            val encodedBodyStream = getInputStreamForRequestBody(stream, headers)
+            val bodyStream = bodyDecoder.decode(headers, encodedBodyStream)
             return HttpRequest(method, requestTarget, protocol, headers, bodyStream)
         } catch (e: IllegalArgumentException) {
             throw BadRequestException(e.message ?: "Invalid request", e)
@@ -119,4 +121,11 @@ internal class HttpRequestParser(
         } catch (_: EOFException) {
             throw IllegalArgumentException(message)
         }
+}
+
+internal fun interface RequestBodyDecoder {
+    fun decode(
+        headers: HttpHeaders,
+        source: InputStream,
+    ): InputStream
 }

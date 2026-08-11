@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory
 internal class RequestHandler(
     private val parser: HttpRequestParser,
     private val routeResolver: RouteResolver,
+    private val interceptRequest: (Context, handler: () -> HttpResponse) -> HttpResponse = { _, handler -> handler() },
 ) {
     /**
      * Processes an incoming HTTP request from the provided byte stream and generates a response.
@@ -27,8 +28,10 @@ internal class RequestHandler(
             try {
                 val route = routeResolver.resolve(request)
                 val response =
-                    Context(request, route.pathParams).use {
-                        route.handler(it)
+                    Context(request, route.pathParams).use { context ->
+                        interceptRequest(context) {
+                            route.handler(context)
+                        }
                     }
 
                 response

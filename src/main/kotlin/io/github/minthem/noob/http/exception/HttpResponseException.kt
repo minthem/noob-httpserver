@@ -1,5 +1,6 @@
 package io.github.minthem.noob.http.exception
 
+import io.github.minthem.noob.http.message.BodyEncoding
 import io.github.minthem.noob.http.message.HttpMethod
 import io.github.minthem.noob.http.message.HttpResponse
 import io.github.minthem.noob.http.message.HttpStatus
@@ -20,6 +21,17 @@ class BadRequestException(
         httpResponse =
             HttpResponse.build {
                 status = HttpStatus.BAD_REQUEST
+                header("connection", "close")
+            },
+    )
+
+internal class UnsupportedBodyEncodingException(
+    encoding: BodyEncoding,
+) : HttpResponseException(
+        message = "Unsupported request body encoding: ${encoding.type}",
+        httpResponse =
+            HttpResponse.build {
+                status = HttpStatus.UNSUPPORTED_MEDIA_TYPE
                 header("connection", "close")
             },
     )

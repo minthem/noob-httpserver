@@ -13,7 +13,7 @@ class BodyWriterTest {
         @Test
         fun `should write fixed body`() {
             val producer = BodyProducerFactory.create(BodySpec.Text("Hello, World!"))
-            val encoder = BodyEncoderFactory.create(BodyEncoding.IDENTITY)
+            val encoder = DefaultBodyEncoder()
 
             val writeChannel = ByteArrayWritableChannel()
 
@@ -27,7 +27,7 @@ class BodyWriterTest {
         @Test
         fun `should write empty body`() {
             val producer = BodyProducerFactory.create(BodySpec.Empty)
-            val encoder = BodyEncoderFactory.create(BodyEncoding.IDENTITY)
+            val encoder = DefaultBodyEncoder()
 
             val writeChannel = ByteArrayWritableChannel()
 
@@ -41,7 +41,16 @@ class BodyWriterTest {
         @Test
         fun `should throw exception when preserves content length is false`() {
             val producer = BodyProducerFactory.create(BodySpec.Text("Hello, World!"))
-            val encoder = BodyEncoderFactory.create(BodyEncoding.GZIP)
+            val encoder =
+                object : BodyEncoder {
+                    override fun encodeTo(
+                        destination: java.nio.channels.WritableByteChannel,
+                        body: BodyProducer,
+                    ) = body.writeTo(destination)
+
+                    override val preservesContentLength: Boolean = false
+                    override val contentEncoding: BodyEncoding = BodyEncoding.GZIP
+                }
 
             assertFailsWith<IllegalArgumentException> {
                 FixedBodyWriter(producer, encoder)
@@ -52,7 +61,7 @@ class BodyWriterTest {
         fun `should throw exception when content length is not set`() {
             val stream = sequenceOf("Hello".toByteArray(), "World".toByteArray()).asCloseable { }
             val producer = BodyProducerFactory.create(BodySpec.Streaming(stream))
-            val encoder = BodyEncoderFactory.create(BodyEncoding.IDENTITY)
+            val encoder = DefaultBodyEncoder()
 
             assertFailsWith<IllegalArgumentException> {
                 FixedBodyWriter(producer, encoder)
@@ -72,7 +81,7 @@ class BodyWriterTest {
                     }
                 }.asCloseable { }
             val producer = BodyProducerFactory.create(BodySpec.Streaming(stream))
-            val encoder = BodyEncoderFactory.create(BodyEncoding.IDENTITY)
+            val encoder = DefaultBodyEncoder()
 
             val writer = ChunkedBodyWriter(producer, encoder)
             val writeChannel = ByteArrayWritableChannel()
@@ -91,7 +100,7 @@ class BodyWriterTest {
         @Test
         fun `should write empty body`() {
             val producer = BodyProducerFactory.create(BodySpec.Empty)
-            val encoder = BodyEncoderFactory.create(BodyEncoding.IDENTITY)
+            val encoder = DefaultBodyEncoder()
             val writer = ChunkedBodyWriter(producer, encoder)
             val writeChannel = ByteArrayWritableChannel()
             writer.write(writeChannel)
@@ -105,7 +114,7 @@ class BodyWriterTest {
         @Test
         fun `should write fixed body`() {
             val producer = BodyProducerFactory.create(BodySpec.Text("Hello, World!"))
-            val encoder = BodyEncoderFactory.create(BodyEncoding.IDENTITY)
+            val encoder = DefaultBodyEncoder()
             val writer = ChunkedBodyWriter(producer, encoder)
             val writeChannel = ByteArrayWritableChannel()
             writer.write(writeChannel)

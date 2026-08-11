@@ -1,9 +1,13 @@
 package io.github.minthem.noob.http.server
 
+import io.github.minthem.noob.http.addon.AddonRegistry
+import io.github.minthem.noob.http.addon.ServerAddon
 import io.github.minthem.noob.http.config.ServerConfig
 import io.github.minthem.noob.http.io.TimeoutExecutor
 import io.github.minthem.noob.http.lifecycle.LifecycleEvent
 import io.github.minthem.noob.http.lifecycle.LifecycleManager
+import io.github.minthem.noob.http.message.ContentNegotiator
+import io.github.minthem.noob.http.message.HttpResponsePreparer
 import io.github.minthem.noob.http.parser.HttpHeadersParser
 import io.github.minthem.noob.http.parser.HttpRequestParser
 import io.github.minthem.noob.http.router.Router
@@ -20,8 +24,10 @@ import kotlin.io.use
 
 class NoobHttpServer(
     private val config: ServerConfig = ServerConfig(),
+    addons: List<ServerAddon> = emptyList(),
 ) {
     private val routerRegistry = RouterRegistry()
+    private val addonRegistry = AddonRegistry(addons)
     private val lifecycleManager = LifecycleManager()
     private val timeoutExecutor = TimeoutExecutor(Executors.newSingleThreadScheduledExecutor())
     private val executor = Executors.newVirtualThreadPerTaskExecutor()
@@ -106,10 +112,24 @@ class NoobHttpServer(
     private fun createSessionHandler(): ClientSessionHandler {
         val routeResolver = RouteResolver(routerRegistry)
         val headerParser = HttpHeadersParser(config.httpLimits)
-        val requestParser = HttpRequestParser(headerParser, config.httpLimits)
-        val requestHandler = RequestHandler(requestParser, routeResolver)
+        val requestParser =
+            HttpRequestParser(
+                headerParser,
+                config.httpLimits,
+                addonRegistry::decodeRequestBody,
+            )
+        val requestHandler =
+            RequestHandler(
+                parser = requestParser,
+                routeResolver = routeResolver,
+                interceptRequest = addonRegistry::interceptRequest,
+            )
         val writer = HttpResponseWriter(config.buffers.responseHeaderBytes)
         val keepAliveManager = KeepAliveManager(timeoutExecutor, config.keepAlive)
+        val responsePreparer =
+            HttpResponsePreparer(
+                contentNegotiator = ContentNegotiator(addonRegistry.responseBodyEncoders()),
+            )
 
         return ClientSessionHandler(
             handler = requestHandler,
@@ -118,6 +138,7 @@ class NoobHttpServer(
             timeoutExecutor = timeoutExecutor,
             timeoutConfig = config.timeouts,
             requestBufferSize = config.buffers.requestBytes,
+            responsePreparer = responsePreparer,
         )
     }
 
