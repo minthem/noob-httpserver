@@ -66,8 +66,7 @@ internal class ContentNegotiator(
                 ?.asSequence()
                 ?.filter { (it.quality ?: 1.0) > 0.0 }
                 ?.sortedDescending()
-                ?.mapNotNull { encoders[it.type] }
-                ?.firstOrNull()
+                ?.firstNotNullOfOrNull { encoders[it.type] }
 
         return selected ?: DefaultBodyEncoder()
     }
