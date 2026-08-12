@@ -1,6 +1,11 @@
 package io.github.minthem.noob.http.message
 
+import io.github.minthem.noob.http.codec.NativeCodec
+import io.github.minthem.noob.http.codec.StreamEncoder
+import java.io.FilterOutputStream
+import java.io.OutputStream
 import java.nio.ByteBuffer
+import java.nio.channels.Channels
 import java.nio.channels.ClosedChannelException
 import java.nio.channels.WritableByteChannel
 
@@ -10,32 +15,50 @@ internal interface BodyWriter {
 
 internal class FixedBodyWriter(
     private val producer: BodyProducer,
-    private val encoder: BodyEncoder,
+    private val encoder: StreamEncoder,
 ) : BodyWriter {
     init {
-        require(encoder.preservesContentLength) {
-            "Encoder must preserve content length for fixed-length bodies"
-        }
-
         require(producer.contentLength != null) {
             "Producer must have content length for fixed-length bodies"
         }
     }
 
     override fun write(destination: WritableByteChannel) {
-        encoder.encodeTo(destination, producer)
+        writeChannel(destination, producer, encoder)
     }
 }
 
 internal class ChunkedBodyWriter(
     private val producer: BodyProducer,
-    private val encoder: BodyEncoder,
+    private val encoder: StreamEncoder,
 ) : BodyWriter {
     override fun write(destination: WritableByteChannel) {
         ChunkedWritableByteChannel(destination).use { chunkedChannel ->
-            encoder.encodeTo(chunkedChannel, producer)
+            writeChannel(chunkedChannel, producer, encoder)
         }
     }
+}
+
+private fun writeChannel(
+    destination: WritableByteChannel,
+    producer: BodyProducer,
+    encoder: StreamEncoder,
+) {
+    if (encoder is NativeCodec) {
+        producer.writeTo(destination)
+        return
+    }
+
+    val output = NonClosingOutputStream(Channels.newOutputStream(destination))
+    encoder.encode(output).use { encoded ->
+        producer.writeTo(Channels.newChannel(encoded))
+    }
+}
+
+private class NonClosingOutputStream(
+    output: OutputStream,
+) : FilterOutputStream(output) {
+    override fun close() = flush()
 }
 
 private class ChunkedWritableByteChannel(

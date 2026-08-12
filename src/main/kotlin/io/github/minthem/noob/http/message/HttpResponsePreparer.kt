@@ -1,18 +1,23 @@
 package io.github.minthem.noob.http.message
 
+import io.github.minthem.noob.http.codec.CodecRegistry
+import io.github.minthem.noob.http.codec.NativeCodec
+import io.github.minthem.noob.http.codec.StreamEncoder
 import java.time.Clock
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 internal class HttpResponsePreparer(
-    private val clock: Clock = Clock.systemUTC(),
-    private val contentNegotiator: ContentNegotiator = ContentNegotiator(),
-    private val decorators: List<HeaderDecorator> =
+    clock: Clock = Clock.systemUTC(),
+    private val codecRegistry: CodecRegistry = CodecRegistry(),
+    decorators: List<HeaderDecorator> = listOf(),
+) {
+    private val decorators =
         listOf(
             DateHeaderDecorator(clock),
             ContentTypeHeaderDecorator(),
-        ),
-) {
+        ) + decorators
+
     fun prepare(
         request: RequestMetadata,
         response: HttpResponse,
@@ -20,13 +25,14 @@ internal class HttpResponsePreparer(
         val mutHeaders = response.headers.toMutable()
         val body = response.body
 
-        val encoder = contentNegotiator.selectEncoder(request)
-        if (encoder.contentEncoding != null) {
-            mutHeaders.add("content-encoding", encoder.contentEncoding.toString())
+        val encoder = selectEncoding(request)
+        val bodyModified = encoder !is NativeCodec
+        if (bodyModified) {
+            mutHeaders.add("content-encoding", encoder.id)
         }
 
         decorators.forEach { it.decorate(mutHeaders, request, response) }
-        val useFixedLength = encoder.preservesContentLength && body.contentLength != null
+        val useFixedLength = !bodyModified && body.contentLength != null
 
         val bodyWriter =
             if (useFixedLength) {
@@ -46,6 +52,17 @@ internal class HttpResponsePreparer(
             bodyWriter = bodyWriter,
         )
     }
+
+    private fun selectEncoding(request: RequestMetadata): StreamEncoder {
+        val encoder =
+            request.headers.acceptEncoding
+                ?.filter { (it.quality ?: 1.0) > 0.0 }
+                ?.sortedByDescending { (it.quality ?: 1.0) }
+                ?.firstNotNullOfOrNull { codecRegistry.getEncoder(it.type) }
+                ?: checkNotNull(codecRegistry.getEncoder(BodyEncoding.IDENTITY.type))
+
+        return encoder
+    }
 }
 
 internal class PreparedHttpResponse internal constructor(
@@ -54,23 +71,6 @@ internal class PreparedHttpResponse internal constructor(
     val headers: HttpHeaders,
     val bodyWriter: BodyWriter,
 )
-
-internal class ContentNegotiator(
-    encoders: Map<String, BodyEncoder> = emptyMap(),
-) {
-    private val encoders = mapOf("identity" to DefaultBodyEncoder()) + encoders
-
-    fun selectEncoder(request: RequestMetadata): BodyEncoder {
-        val selected =
-            request.headers.acceptEncoding
-                ?.asSequence()
-                ?.filter { (it.quality ?: 1.0) > 0.0 }
-                ?.sortedDescending()
-                ?.firstNotNullOfOrNull { encoders[it.type] }
-
-        return selected ?: DefaultBodyEncoder()
-    }
-}
 
 internal interface HeaderDecorator {
     fun decorate(

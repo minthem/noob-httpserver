@@ -1,5 +1,7 @@
 package io.github.minthem.noob.http.message
 
+import io.github.minthem.noob.http.codec.CodecRegistry
+import io.github.minthem.noob.http.codec.GzipCodec
 import io.github.minthem.noob.http.util.asCloseable
 import java.time.Clock
 import java.time.Instant
@@ -114,5 +116,43 @@ class HttpResponsePreparerTest {
 
         assertEquals("chunked", prepared.headers["transfer-encoding"])
         assertNull(prepared.headers["content-length"])
+    }
+
+    @Test
+    fun `should encode response with accepted gzip codec`() {
+        val preparer = HttpResponsePreparer(fixedClock, CodecRegistry(listOf(GzipCodec())))
+        val request = FallbackRequestMetadata(headers = HttpHeaders.of("Accept-Encoding" to "gzip"))
+
+        val prepared = preparer.prepare(request, HttpResponse.build { body("Hello") })
+
+        assertEquals("gzip", prepared.headers["content-encoding"])
+        assertEquals("chunked", prepared.headers["transfer-encoding"])
+        assertNull(prepared.headers["content-length"])
+        assertTrue(prepared.bodyWriter is ChunkedBodyWriter)
+    }
+
+    @Test
+    fun `should prefer identity codec with higher quality`() {
+        val preparer = HttpResponsePreparer(fixedClock, CodecRegistry(listOf(GzipCodec())))
+        val request =
+            FallbackRequestMetadata(
+                headers = HttpHeaders.of("Accept-Encoding" to "gzip;q=0.5, identity;q=1.0"),
+            )
+
+        val prepared = preparer.prepare(request, HttpResponse.build { body("Hello") })
+
+        assertNull(prepared.headers["content-encoding"])
+        assertEquals("5", prepared.headers["content-length"])
+        assertTrue(prepared.bodyWriter is FixedBodyWriter)
+    }
+
+    @Test
+    fun `should fall back to identity for unsupported encoding`() {
+        val request = FallbackRequestMetadata(headers = HttpHeaders.of("Accept-Encoding" to "br"))
+
+        val prepared = preparer.prepare(request, HttpResponse.build { body("Hello") })
+
+        assertNull(prepared.headers["content-encoding"])
+        assertEquals("5", prepared.headers["content-length"])
     }
 }

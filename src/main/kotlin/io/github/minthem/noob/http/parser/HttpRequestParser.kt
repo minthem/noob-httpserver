@@ -1,7 +1,9 @@
 package io.github.minthem.noob.http.parser
 
+import io.github.minthem.noob.http.codec.CodecRegistry
 import io.github.minthem.noob.http.config.HttpLimitsConfig
 import io.github.minthem.noob.http.exception.BadRequestException
+import io.github.minthem.noob.http.exception.UnsupportedBodyEncodingException
 import io.github.minthem.noob.http.io.BodySourceInputStream
 import io.github.minthem.noob.http.io.ByteReadStream
 import io.github.minthem.noob.http.message.ChunkedBodySource
@@ -12,6 +14,7 @@ import io.github.minthem.noob.http.message.HttpProtocol
 import io.github.minthem.noob.http.message.HttpRequest
 import io.github.minthem.noob.http.message.RequestTarget
 import io.github.minthem.noob.http.message.RequestTargetParser
+import io.github.minthem.noob.http.message.contentEncoding
 import io.github.minthem.noob.http.message.contentLength
 import java.io.EOFException
 import java.io.InputStream
@@ -19,7 +22,7 @@ import java.io.InputStream
 internal class HttpRequestParser(
     private val headerParser: HttpHeadersParser,
     private val config: HttpLimitsConfig,
-    private val bodyDecoder: RequestBodyDecoder = RequestBodyDecoder { _, source -> source },
+    private val codecRegistry: CodecRegistry = CodecRegistry(),
 ) {
     fun parse(stream: ByteReadStream): HttpRequest {
         try {
@@ -27,9 +30,10 @@ internal class HttpRequestParser(
             val requestTarget = readRequestTarget(stream)
             val protocol = readProtocol(stream)
             val headers = readHeaders(stream)
-            val encodedBodyStream = getInputStreamForRequestBody(stream, headers)
-            val bodyStream = bodyDecoder.decode(headers, encodedBodyStream)
-            return HttpRequest(method, requestTarget, protocol, headers, bodyStream)
+            val bodyStream = getInputStreamForRequestBody(stream, headers)
+            val stream = wrapBodyDecoder(bodyStream, headers)
+
+            return HttpRequest(method, requestTarget, protocol, headers, stream)
         } catch (e: IllegalArgumentException) {
             throw BadRequestException(e.message ?: "Invalid request", e)
         }
@@ -121,11 +125,25 @@ internal class HttpRequestParser(
         } catch (_: EOFException) {
             throw IllegalArgumentException(message)
         }
-}
 
-internal fun interface RequestBodyDecoder {
-    fun decode(
+    private fun wrapBodyDecoder(
+        bodyStream: InputStream,
         headers: HttpHeaders,
-        source: InputStream,
-    ): InputStream
+    ): InputStream {
+        val encoding = headers.contentEncoding ?: return bodyStream
+        val decoders =
+            encoding.asReversed().map {
+                val decoder =
+                    codecRegistry.getDecoder(it.type)
+                        ?: throw UnsupportedBodyEncodingException(it)
+                decoder
+            }
+
+        var stream = bodyStream
+        for (decoder in decoders) {
+            stream = decoder.decode(stream)
+        }
+
+        return stream
+    }
 }
