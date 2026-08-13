@@ -55,6 +55,25 @@ internal class ContextTest {
     }
 
     @Test
+    fun `pathParams are copied when the context is created`() {
+        val request =
+            HttpRequest(
+                method = HttpMethod.GET,
+                path = RequestTarget("/test"),
+                protocol = HttpProtocol.HTTP_1_1,
+                headers = HttpHeaders.EMPTY,
+                bodyStream = ByteArrayInputStream(ByteArray(0)),
+            )
+        val pathParams = mutableMapOf("id" to "before")
+        val context = Context(request, pathParams)
+
+        pathParams["id"] = "after"
+        pathParams["new"] = "value"
+
+        assertEquals(mapOf("id" to "before"), context.pathParams)
+    }
+
+    @Test
     fun `test queryParam returns first value when multiple values exist`() {
         val request =
             HttpRequest(

@@ -2,6 +2,9 @@ package io.github.minthem.noob.http.server
 
 import io.github.minthem.noob.http.config.ServerConfig
 import io.github.minthem.noob.http.exception.HttpResponseException
+import io.github.minthem.noob.http.interceptor.Chain
+import io.github.minthem.noob.http.interceptor.Interceptor
+import io.github.minthem.noob.http.interceptor.InterceptorRegistry
 import io.github.minthem.noob.http.io.ByteChannelReadStream
 import io.github.minthem.noob.http.message.HttpMethod
 import io.github.minthem.noob.http.message.HttpProtocol
@@ -45,6 +48,7 @@ class RequestHandlerTest {
             RequestHandler(
                 parser = requestParser,
                 routeResolver = RouteResolver(registry),
+                interceptorRegistry = InterceptorRegistry(),
             )
         val stream =
             ByteChannelReadStream(
@@ -67,12 +71,81 @@ class RequestHandlerTest {
     }
 
     @Test
+    fun `process runs interceptors before the route handler`() {
+        val events = mutableListOf<String>()
+        val registry =
+            RouterRegistry().also {
+                it.register(
+                    Router {
+                        get("/users/{id}") { context ->
+                            events += "handler:${context.pathParams["id"]}"
+                            HttpResponse.build { status = HttpStatus.OK }
+                        }
+                    },
+                )
+            }
+        val interceptor =
+            object : Interceptor {
+                override fun intercept(chain: Chain): HttpResponse {
+                    events += "interceptor:${chain.context.pathParams["id"]}"
+                    return chain.proceed()
+                }
+            }
+        val handler =
+            RequestHandler(
+                parser = requestParser,
+                routeResolver = RouteResolver(registry),
+                interceptorRegistry = InterceptorRegistry(listOf(interceptor)),
+            )
+
+        val actual = handler.process(requestStream("GET /users/42 HTTP/1.1"))
+
+        assertEquals(HttpStatus.OK, actual.response.status)
+        assertEquals(listOf("interceptor:42", "handler:42"), events)
+    }
+
+    @Test
+    fun `process returns an interceptor response without invoking the route handler`() {
+        var routeHandlerCalls = 0
+        val registry =
+            RouterRegistry().also {
+                it.register(
+                    Router {
+                        get("/protected") {
+                            routeHandlerCalls++
+                            HttpResponse.build { status = HttpStatus.OK }
+                        }
+                    },
+                )
+            }
+        val interceptor =
+            object : Interceptor {
+                override fun intercept(chain: Chain): HttpResponse =
+                    HttpResponse.build {
+                        status = HttpStatus.FORBIDDEN
+                    }
+            }
+        val handler =
+            RequestHandler(
+                parser = requestParser,
+                routeResolver = RouteResolver(registry),
+                interceptorRegistry = InterceptorRegistry(listOf(interceptor)),
+            )
+
+        val actual = handler.process(requestStream("GET /protected HTTP/1.1"))
+
+        assertEquals(HttpStatus.FORBIDDEN, actual.response.status)
+        assertEquals(0, routeHandlerCalls)
+    }
+
+    @Test
     fun `process returns error response when route resolver throws HttpResponseException`() {
         val registry = RouterRegistry()
         val handler =
             RequestHandler(
                 parser = requestParser,
                 routeResolver = RouteResolver(registry),
+                interceptorRegistry = InterceptorRegistry(),
             )
         val stream =
             ByteChannelReadStream(
@@ -117,6 +190,7 @@ class RequestHandlerTest {
             RequestHandler(
                 parser = requestParser,
                 routeResolver = RouteResolver(registry),
+                interceptorRegistry = InterceptorRegistry(),
             )
         val stream =
             ByteChannelReadStream(
@@ -154,6 +228,7 @@ class RequestHandlerTest {
             RequestHandler(
                 parser = requestParser,
                 routeResolver = RouteResolver(registry),
+                interceptorRegistry = InterceptorRegistry(),
             )
         val stream =
             ByteChannelReadStream(
@@ -182,6 +257,7 @@ class RequestHandlerTest {
             RequestHandler(
                 parser = requestParser,
                 routeResolver = RouteResolver(registry),
+                interceptorRegistry = InterceptorRegistry(),
             )
         val stream =
             ByteChannelReadStream(
@@ -203,4 +279,16 @@ class RequestHandlerTest {
         assertEquals(HttpStatus.BAD_REQUEST, actual.httpResponse.status)
         assertEquals("close", actual.httpResponse.headers["connection"])
     }
+
+    private fun requestStream(requestLine: String): ByteChannelReadStream =
+        ByteChannelReadStream(
+            FixedReadableByteChannel.fromStrings(
+                listOf(
+                    "$requestLine\r\n",
+                    "host: localhost\r\n",
+                    "\r\n",
+                ),
+            ),
+            ByteBuffer.allocate(1024).flip(),
+        )
 }
