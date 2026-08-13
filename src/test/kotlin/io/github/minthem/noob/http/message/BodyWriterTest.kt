@@ -1,11 +1,17 @@
 package io.github.minthem.noob.http.message
 
+import io.github.minthem.noob.http.codec.GzipCodec
+import io.github.minthem.noob.http.codec.NativeCodec
+import io.github.minthem.noob.http.codec.StreamEncoder
 import io.github.minthem.noob.http.testutil.ByteArrayWritableChannel
+import io.github.minthem.noob.http.testutil.InMemoryByteChannel
 import io.github.minthem.noob.http.util.asCloseable
 import org.junit.jupiter.api.Nested
+import java.io.OutputStream
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
 
 class BodyWriterTest {
     @Nested
@@ -13,7 +19,7 @@ class BodyWriterTest {
         @Test
         fun `should write fixed body`() {
             val producer = BodyProducerFactory.create(BodySpec.Text("Hello, World!"))
-            val encoder = DefaultBodyEncoder()
+            val encoder = NativeCodec()
 
             val writeChannel = ByteArrayWritableChannel()
 
@@ -27,7 +33,7 @@ class BodyWriterTest {
         @Test
         fun `should write empty body`() {
             val producer = BodyProducerFactory.create(BodySpec.Empty)
-            val encoder = DefaultBodyEncoder()
+            val encoder = NativeCodec()
 
             val writeChannel = ByteArrayWritableChannel()
 
@@ -39,29 +45,20 @@ class BodyWriterTest {
         }
 
         @Test
-        fun `should throw exception when preserves content length is false`() {
-            val producer = BodyProducerFactory.create(BodySpec.Text("Hello, World!"))
-            val encoder =
-                object : BodyEncoder {
-                    override fun encodeTo(
-                        destination: java.nio.channels.WritableByteChannel,
-                        body: BodyProducer,
-                    ) = body.writeTo(destination)
+        fun `should not close destination channel`() {
+            val producer = BodyProducerFactory.create(BodySpec.Text("Hello"))
+            val writeChannel = InMemoryByteChannel(emptyList())
 
-                    override val preservesContentLength: Boolean = false
-                    override val contentEncoding: BodyEncoding = BodyEncoding.GZIP
-                }
+            FixedBodyWriter(producer, NativeCodec()).write(writeChannel)
 
-            assertFailsWith<IllegalArgumentException> {
-                FixedBodyWriter(producer, encoder)
-            }
+            assertTrue(writeChannel.isOpen)
         }
 
         @Test
         fun `should throw exception when content length is not set`() {
             val stream = sequenceOf("Hello".toByteArray(), "World".toByteArray()).asCloseable { }
             val producer = BodyProducerFactory.create(BodySpec.Streaming(stream))
-            val encoder = DefaultBodyEncoder()
+            val encoder = NativeCodec()
 
             assertFailsWith<IllegalArgumentException> {
                 FixedBodyWriter(producer, encoder)
@@ -81,7 +78,7 @@ class BodyWriterTest {
                     }
                 }.asCloseable { }
             val producer = BodyProducerFactory.create(BodySpec.Streaming(stream))
-            val encoder = DefaultBodyEncoder()
+            val encoder = NativeCodec()
 
             val writer = ChunkedBodyWriter(producer, encoder)
             val writeChannel = ByteArrayWritableChannel()
@@ -100,7 +97,7 @@ class BodyWriterTest {
         @Test
         fun `should write empty body`() {
             val producer = BodyProducerFactory.create(BodySpec.Empty)
-            val encoder = DefaultBodyEncoder()
+            val encoder = NativeCodec()
             val writer = ChunkedBodyWriter(producer, encoder)
             val writeChannel = ByteArrayWritableChannel()
             writer.write(writeChannel)
@@ -112,9 +109,30 @@ class BodyWriterTest {
         }
 
         @Test
+        fun `should not close destination channel after encoded body`() {
+            val producer = BodyProducerFactory.create(BodySpec.Text("Hello"))
+            val writeChannel = InMemoryByteChannel(emptyList())
+
+            ChunkedBodyWriter(producer, GzipCodec()).write(writeChannel)
+
+            assertTrue(writeChannel.isOpen)
+        }
+
+        @Test
+        fun `should preserve bulk writes through non-native encoder`() {
+            val producer = BodyProducerFactory.create(BodySpec.Text("Hello"))
+            val writer = ChunkedBodyWriter(producer, PassthroughEncoder)
+            val writeChannel = ByteArrayWritableChannel()
+
+            writer.write(writeChannel)
+
+            assertEquals("5\r\nHello\r\n0\r\n\r\n", writeChannel.toByteArray().decodeToString())
+        }
+
+        @Test
         fun `should write fixed body`() {
             val producer = BodyProducerFactory.create(BodySpec.Text("Hello, World!"))
-            val encoder = DefaultBodyEncoder()
+            val encoder = NativeCodec()
             val writer = ChunkedBodyWriter(producer, encoder)
             val writeChannel = ByteArrayWritableChannel()
             writer.write(writeChannel)
@@ -124,5 +142,11 @@ class BodyWriterTest {
             val actual = String(writeChannel.toByteArray())
             assertEquals(expected, actual)
         }
+    }
+
+    private object PassthroughEncoder : StreamEncoder {
+        override val id: String = "passthrough"
+
+        override fun encode(output: OutputStream): OutputStream = output
     }
 }

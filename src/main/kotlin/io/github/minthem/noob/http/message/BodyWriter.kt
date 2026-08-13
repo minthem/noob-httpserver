@@ -1,6 +1,10 @@
 package io.github.minthem.noob.http.message
 
+import io.github.minthem.noob.http.codec.NativeCodec
+import io.github.minthem.noob.http.codec.StreamEncoder
+import java.io.OutputStream
 import java.nio.ByteBuffer
+import java.nio.channels.Channels
 import java.nio.channels.ClosedChannelException
 import java.nio.channels.WritableByteChannel
 
@@ -10,31 +14,78 @@ internal interface BodyWriter {
 
 internal class FixedBodyWriter(
     private val producer: BodyProducer,
-    private val encoder: BodyEncoder,
+    private val encoder: StreamEncoder,
 ) : BodyWriter {
     init {
-        require(encoder.preservesContentLength) {
-            "Encoder must preserve content length for fixed-length bodies"
-        }
-
         require(producer.contentLength != null) {
             "Producer must have content length for fixed-length bodies"
         }
     }
 
     override fun write(destination: WritableByteChannel) {
-        encoder.encodeTo(destination, producer)
+        writeChannel(destination, producer, encoder)
     }
 }
 
 internal class ChunkedBodyWriter(
     private val producer: BodyProducer,
-    private val encoder: BodyEncoder,
+    private val encoder: StreamEncoder,
 ) : BodyWriter {
     override fun write(destination: WritableByteChannel) {
         ChunkedWritableByteChannel(destination).use { chunkedChannel ->
-            encoder.encodeTo(chunkedChannel, producer)
+            writeChannel(chunkedChannel, producer, encoder)
+            chunkedChannel.finish()
         }
+    }
+}
+
+private fun writeChannel(
+    destination: WritableByteChannel,
+    producer: BodyProducer,
+    encoder: StreamEncoder,
+) {
+    if (encoder is NativeCodec) {
+        producer.writeTo(destination)
+        return
+    }
+
+    val output = NonClosingOutputStream(Channels.newOutputStream(destination))
+    encoder.encode(output).use { encoded ->
+        producer.writeTo(Channels.newChannel(encoded))
+    }
+}
+
+/**
+ * A wrapper around an existing [OutputStream] that overrides its behavior to prevent it from being closed.
+ *
+ * This class delegates all write operations and flushing to the underlying [OutputStream]. However, when the
+ * `close` method is called, it only flushes the stream without actually closing the underlying stream. This
+ * allows the wrapped stream to remain usable after `close` is invoked on this wrapper.
+ *
+ * @constructor Creates a new instance with a delegate [OutputStream].
+ * @param delegate The [OutputStream] to wrap and delegate operations to.
+ */
+private class NonClosingOutputStream(
+    private val delegate: OutputStream,
+) : OutputStream() {
+    override fun write(byte: Int) {
+        delegate.write(byte)
+    }
+
+    override fun write(
+        bytes: ByteArray,
+        offset: Int,
+        length: Int,
+    ) {
+        delegate.write(bytes, offset, length)
+    }
+
+    override fun flush() {
+        delegate.flush()
+    }
+
+    override fun close() {
+        flush()
     }
 }
 
@@ -65,13 +116,15 @@ private class ChunkedWritableByteChannel(
     override fun isOpen(): Boolean = open
 
     override fun close() {
+        if (open) {
+            open = false
+        }
+    }
+
+    fun finish() {
         if (!finished) {
             writeRaw("0\r\n\r\n".encodeToByteArray())
             finished = true
-        }
-
-        if (open) {
-            open = false
         }
     }
 
