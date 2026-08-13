@@ -1,6 +1,7 @@
 package io.github.minthem.noob.http.server
 
 import io.github.minthem.noob.http.exception.HttpResponseException
+import io.github.minthem.noob.http.interceptor.InterceptorRegistry
 import io.github.minthem.noob.http.io.ByteReadStream
 import io.github.minthem.noob.http.message.HttpRequest
 import io.github.minthem.noob.http.message.HttpResponse
@@ -11,6 +12,7 @@ import org.slf4j.LoggerFactory
 internal class RequestHandler(
     private val parser: HttpRequestParser,
     private val routeResolver: RouteResolver,
+    private val interceptorRegistry: InterceptorRegistry,
 ) {
     /**
      * Processes an incoming HTTP request from the provided byte stream and generates a response.
@@ -18,7 +20,7 @@ internal class RequestHandler(
      * @param stream The input byte stream containing the raw HTTP request data.
      * @return A result object encapsulating the processed HTTP request and the corresponding response.
      *         If an error occurs during processing, a response generated from the exception is included.
-     * @throws HttpResponseException If parsing fails before a request object can be created.
+     * @throws HttpResponseException If parsing fails before, a request object can be created.
      */
     fun process(stream: ByteReadStream): RequestHandlingResult {
         val request = parser.parse(stream)
@@ -28,7 +30,10 @@ internal class RequestHandler(
                 val route = routeResolver.resolve(request)
                 val response =
                     Context(request, route.pathParams).use {
-                        route.handler(it)
+                        interceptorRegistry.interceptHandler(
+                            context = it,
+                            handler = route.handler,
+                        )
                     }
 
                 response

@@ -11,8 +11,9 @@ import java.io.InputStream
 
 class Context internal constructor(
     private val req: HttpRequest,
-    val pathParams: Map<String, String>,
+    pathParams: Map<String, String>,
 ) : Closeable {
+    val pathParams: Map<String, String> = pathParams.toMap()
     val path: String by lazy { req.path.decodedPath }
     val headers: HttpHeaders = req.headers.toImmutable()
     val queryParams: Map<String, List<String>> by lazy { req.path.decodedQuery }

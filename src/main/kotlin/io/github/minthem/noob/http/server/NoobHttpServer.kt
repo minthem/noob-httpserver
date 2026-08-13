@@ -2,6 +2,8 @@ package io.github.minthem.noob.http.server
 
 import io.github.minthem.noob.http.codec.CodecRegistry
 import io.github.minthem.noob.http.config.ServerConfig
+import io.github.minthem.noob.http.interceptor.Interceptor
+import io.github.minthem.noob.http.interceptor.InterceptorRegistry
 import io.github.minthem.noob.http.io.TimeoutExecutor
 import io.github.minthem.noob.http.lifecycle.LifecycleEvent
 import io.github.minthem.noob.http.lifecycle.LifecycleManager
@@ -21,6 +23,7 @@ import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
 class NoobHttpServer(
     private val config: ServerConfig = ServerConfig(),
+    interceptors: List<Interceptor> = emptyList(),
 ) {
     private val routerRegistry = RouterRegistry()
     private val lifecycleManager = LifecycleManager()
@@ -34,6 +37,8 @@ class NoobHttpServer(
         socket.bind(InetSocketAddress(config.port.toInt()))
         socket
     }
+
+    private val interceptorRegistry = InterceptorRegistry(interceptors)
 
     @OptIn(ExperimentalAtomicApi::class)
     fun start() {
@@ -81,7 +86,11 @@ class NoobHttpServer(
         }
     }
 
+    @OptIn(ExperimentalAtomicApi::class)
     fun addRouter(router: Router) {
+        if (serverIsRunning.load()) {
+            throw IllegalStateException("Server is already running")
+        }
         routerRegistry.register(router)
     }
 
@@ -109,7 +118,7 @@ class NoobHttpServer(
         val routeResolver = RouteResolver(routerRegistry)
         val headerParser = HttpHeadersParser(config.httpLimits)
         val requestParser = HttpRequestParser(headerParser, config.httpLimits, codecRegistry)
-        val requestHandler = RequestHandler(requestParser, routeResolver)
+        val requestHandler = RequestHandler(requestParser, routeResolver, interceptorRegistry)
         val writer = HttpResponseWriter(config.buffers.responseHeaderBytes)
         val keepAliveManager = KeepAliveManager(timeoutExecutor, config.keepAlive)
         val responsePreparer =

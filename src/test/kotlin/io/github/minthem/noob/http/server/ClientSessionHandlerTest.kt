@@ -2,6 +2,7 @@ package io.github.minthem.noob.http.server
 
 import io.github.minthem.noob.http.config.KeepAliveConfig
 import io.github.minthem.noob.http.config.ServerConfig
+import io.github.minthem.noob.http.interceptor.InterceptorRegistry
 import io.github.minthem.noob.http.io.TimeoutExecutor
 import io.github.minthem.noob.http.message.HttpResponse
 import io.github.minthem.noob.http.message.HttpStatus
@@ -46,7 +47,7 @@ class ClientSessionHandlerTest {
 
         val sessionHandler =
             ClientSessionHandler(
-                handler = RequestHandler(requestParser, RouteResolver(registry)),
+                handler = RequestHandler(requestParser, RouteResolver(registry), InterceptorRegistry()),
                 writer = responseWriter,
                 keepAliveManager = KeepAliveManager(timeoutExecutor, config.keepAlive),
                 timeoutExecutor = timeoutExecutor,
@@ -96,7 +97,7 @@ class ClientSessionHandlerTest {
 
         val sessionHandler =
             ClientSessionHandler(
-                handler = RequestHandler(requestParser, RouteResolver(registry)),
+                handler = RequestHandler(requestParser, RouteResolver(registry), InterceptorRegistry()),
                 writer = responseWriter,
                 keepAliveManager = KeepAliveManager(timeoutExecutor, config.keepAlive),
                 timeoutExecutor = timeoutExecutor,
@@ -149,7 +150,7 @@ class ClientSessionHandlerTest {
 
         val sessionHandler =
             ClientSessionHandler(
-                handler = RequestHandler(requestParser, RouteResolver(registry)),
+                handler = RequestHandler(requestParser, RouteResolver(registry), InterceptorRegistry()),
                 writer = responseWriter,
                 keepAliveManager = KeepAliveManager(timeoutExecutor, config.keepAlive),
                 timeoutExecutor = timeoutExecutor,
@@ -197,7 +198,7 @@ class ClientSessionHandlerTest {
 
         val sessionHandler =
             ClientSessionHandler(
-                handler = RequestHandler(requestParser, RouteResolver(registry)),
+                handler = RequestHandler(requestParser, RouteResolver(registry), InterceptorRegistry()),
                 writer = responseWriter,
                 keepAliveManager = KeepAliveManager(timeoutExecutor, keepAliveConfig),
                 timeoutExecutor = timeoutExecutor,
@@ -228,7 +229,7 @@ class ClientSessionHandlerTest {
         val registry = RouterRegistry()
         val sessionHandler =
             ClientSessionHandler(
-                handler = RequestHandler(requestParser, RouteResolver(registry)),
+                handler = RequestHandler(requestParser, RouteResolver(registry), InterceptorRegistry()),
                 writer = responseWriter,
                 keepAliveManager = KeepAliveManager(timeoutExecutor, config.keepAlive),
                 timeoutExecutor = timeoutExecutor,
@@ -268,7 +269,7 @@ class ClientSessionHandlerTest {
 
         val sessionHandler =
             ClientSessionHandler(
-                handler = RequestHandler(requestParser, RouteResolver(registry)),
+                handler = RequestHandler(requestParser, RouteResolver(registry), InterceptorRegistry()),
                 writer = responseWriter,
                 keepAliveManager = KeepAliveManager(timeoutExecutor, config.keepAlive),
                 timeoutExecutor = timeoutExecutor,
