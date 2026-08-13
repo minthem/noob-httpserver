@@ -2,10 +2,12 @@ package io.github.minthem.noob.http.message
 
 import io.github.minthem.noob.http.codec.GzipCodec
 import io.github.minthem.noob.http.codec.NativeCodec
+import io.github.minthem.noob.http.codec.StreamEncoder
 import io.github.minthem.noob.http.testutil.ByteArrayWritableChannel
 import io.github.minthem.noob.http.testutil.InMemoryByteChannel
 import io.github.minthem.noob.http.util.asCloseable
 import org.junit.jupiter.api.Nested
+import java.io.OutputStream
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -117,6 +119,17 @@ class BodyWriterTest {
         }
 
         @Test
+        fun `should preserve bulk writes through non-native encoder`() {
+            val producer = BodyProducerFactory.create(BodySpec.Text("Hello"))
+            val writer = ChunkedBodyWriter(producer, PassthroughEncoder)
+            val writeChannel = ByteArrayWritableChannel()
+
+            writer.write(writeChannel)
+
+            assertEquals("5\r\nHello\r\n0\r\n\r\n", writeChannel.toByteArray().decodeToString())
+        }
+
+        @Test
         fun `should write fixed body`() {
             val producer = BodyProducerFactory.create(BodySpec.Text("Hello, World!"))
             val encoder = NativeCodec()
@@ -129,5 +142,11 @@ class BodyWriterTest {
             val actual = String(writeChannel.toByteArray())
             assertEquals(expected, actual)
         }
+    }
+
+    private object PassthroughEncoder : StreamEncoder {
+        override val id: String = "passthrough"
+
+        override fun encode(output: OutputStream): OutputStream = output
     }
 }
