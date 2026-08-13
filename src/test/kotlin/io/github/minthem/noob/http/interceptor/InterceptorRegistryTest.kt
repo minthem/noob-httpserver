@@ -65,13 +65,12 @@ class InterceptorRegistryTest {
     private fun interceptor(
         name: String,
         events: MutableList<String>,
-    ) =
-        object : Interceptor {
-            override fun intercept(chain: Chain): HttpResponse {
-                events += name
-                return chain.proceed()
-            }
+    ) = object : Interceptor {
+        override fun intercept(chain: Chain): HttpResponse {
+            events += name
+            return chain.proceed()
         }
+    }
 
     private fun context() =
         Context(
