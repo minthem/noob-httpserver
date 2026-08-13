@@ -34,6 +34,7 @@ internal class ChunkedBodyWriter(
     override fun write(destination: WritableByteChannel) {
         ChunkedWritableByteChannel(destination).use { chunkedChannel ->
             writeChannel(chunkedChannel, producer, encoder)
+            chunkedChannel.finish()
         }
     }
 }
@@ -115,13 +116,15 @@ private class ChunkedWritableByteChannel(
     override fun isOpen(): Boolean = open
 
     override fun close() {
+        if (open) {
+            open = false
+        }
+    }
+
+    fun finish() {
         if (!finished) {
             writeRaw("0\r\n\r\n".encodeToByteArray())
             finished = true
-        }
-
-        if (open) {
-            open = false
         }
     }
 
