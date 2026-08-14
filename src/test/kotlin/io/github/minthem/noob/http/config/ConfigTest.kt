@@ -181,6 +181,8 @@ class ConfigTest {
             assertEquals(256, actual.maxHeaderNameBytes)
             assertEquals(8 * 1024, actual.maxHeaderValueBytes)
             assertEquals(100, actual.maxHeaderCount)
+            assertEquals(16 * 1024 * 1024, actual.maxRequestBodyBytes)
+            assertEquals(8 * 1024 * 1024, actual.maxChunkSizeBytes)
         }
 
         @Test
@@ -234,6 +236,26 @@ class ConfigTest {
         }
 
         @Test
+        fun `throws when max request body bytes is zero`() {
+            val actual =
+                assertFailsWith<IllegalArgumentException> {
+                    HttpLimitsConfig(maxRequestBodyBytes = 0)
+                }
+
+            assertEquals("Max request body bytes must be positive", actual.message)
+        }
+
+        @Test
+        fun `throws when max chunk size bytes is zero`() {
+            val actual =
+                assertFailsWith<IllegalArgumentException> {
+                    HttpLimitsConfig(maxChunkSizeBytes = 0)
+                }
+
+            assertEquals("Max chunk size bytes must be positive", actual.message)
+        }
+
+        @Test
         fun `throws when max request line bytes is negative`() {
             val actual =
                 assertFailsWith<IllegalArgumentException> {
@@ -281,6 +303,26 @@ class ConfigTest {
                 }
 
             assertEquals("Max header count must be positive", actual.message)
+        }
+
+        @Test
+        fun `throws when max request body bytes is negative`() {
+            val actual =
+                assertFailsWith<IllegalArgumentException> {
+                    HttpLimitsConfig(maxRequestBodyBytes = -1)
+                }
+
+            assertEquals("Max request body bytes must be positive", actual.message)
+        }
+
+        @Test
+        fun `throws when max chunk size bytes is negative`() {
+            val actual =
+                assertFailsWith<IllegalArgumentException> {
+                    HttpLimitsConfig(maxChunkSizeBytes = -1)
+                }
+
+            assertEquals("Max chunk size bytes must be positive", actual.message)
         }
     }
 
