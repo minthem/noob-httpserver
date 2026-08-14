@@ -1,6 +1,7 @@
 package io.github.minthem.noob.http.parser
 
 import io.github.minthem.noob.http.config.HttpLimitsConfig
+import io.github.minthem.noob.http.exception.ContentLengthTooLargeException
 import io.github.minthem.noob.http.exception.HttpResponseException
 import io.github.minthem.noob.http.io.ByteChannelReadStream
 import io.github.minthem.noob.http.message.HttpMethod
@@ -20,6 +21,7 @@ import java.nio.ByteBuffer
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 
 class HttpRequestParserTest {
     private val config = HttpLimitsConfig()
@@ -390,6 +392,31 @@ class HttpRequestParserTest {
                 "Content-Length で指定された分だけ読み取ることを期待",
             )
         }
+
+
+        @Test
+        fun `parse should return a request when body size is exactly at limit`() {
+            val bodyLimitConfig = 1024 * 1024
+            val largeBody = "a".repeat(bodyLimitConfig)
+            val socketMock =
+                FixedReadableByteChannel.fromStrings(
+                    listOf(
+                        "POST /path HTTP/1.1\r\n",
+                        "Host: localhost\r\n",
+                        "Content-Length: ${largeBody.length}\r\n",
+                        "\r\n",
+                        largeBody,
+                    ),
+                )
+            val channel = ByteChannelReadStream(socketMock, ByteBuffer.allocate(1024).flip())
+            val parser = HttpRequestParser(headerParser, HttpLimitsConfig(maxRequestBodyBytes = bodyLimitConfig.toLong()))
+            val actual = parser.parse(channel)
+
+            assertContentEquals(
+                largeBody.toByteArray(Charsets.US_ASCII),
+                actual.bodyStream.readAllBytes(),
+            )
+        }
     }
 
     @Nested
@@ -647,6 +674,31 @@ class HttpRequestParserTest {
             val exp = assertThrows<HttpResponseException> { parser.parse(channel) }
             assertEquals(HttpStatus.BAD_REQUEST, exp.httpResponse.status)
             assertEquals("close", exp.httpResponse.headers["Connection"])
+        }
+
+        @Test
+        fun `parse should throw an exception when Content-Length too large`() {
+            val bodyLimitConfig = 1024 * 1024
+            val largeBody = "a".repeat(bodyLimitConfig + 1)
+            val socketMock =
+                FixedReadableByteChannel.fromStrings(
+                    listOf(
+                        "POST /path HTTP/1.1\r\n",
+                        "Host: localhost\r\n",
+                        "Content-Length: ${largeBody.length}\r\n",
+                        "\r\n",
+                        largeBody,
+                    ),
+                )
+            val channel = ByteChannelReadStream(socketMock, ByteBuffer.allocate(1024).flip())
+            val parser = HttpRequestParser(headerParser, HttpLimitsConfig(maxRequestBodyBytes = bodyLimitConfig.toLong()))
+
+            val exp = assertFailsWith<ContentLengthTooLargeException> {
+                parser.parse(channel)
+            }
+
+            assertEquals(largeBody.length.toLong(), exp.contentLength)
+            assertEquals(bodyLimitConfig.toLong(), exp.limitBytes)
         }
     }
 

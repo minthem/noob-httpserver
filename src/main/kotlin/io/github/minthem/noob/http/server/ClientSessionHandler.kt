@@ -2,6 +2,7 @@ package io.github.minthem.noob.http.server
 
 import io.github.minthem.noob.http.config.TimeoutConfig
 import io.github.minthem.noob.http.exception.HttpResponseException
+import io.github.minthem.noob.http.exception.PayloadTooLargeException
 import io.github.minthem.noob.http.io.ByteChannelReadStream
 import io.github.minthem.noob.http.io.TimeoutByteChannel
 import io.github.minthem.noob.http.io.TimeoutExecutor
@@ -82,6 +83,16 @@ internal class ClientSessionHandler(
                     }
                 }
             }
+        } catch (e: PayloadTooLargeException) {
+            logger.error("Payload too large. {}", e.message, e)
+            val response =
+                HttpResponse.build {
+                    status = HttpStatus.PAYLOAD_TOO_LARGE
+                    header("Connection", "close")
+                    body("Payload too large")
+                }
+            val prepared = responsePreparer.prepare(FallbackRequestMetadata(), response)
+            writer.write(channel, prepared)
         } catch (e: IllegalStateException) {
             if (!socket.isOpen) {
                 /**

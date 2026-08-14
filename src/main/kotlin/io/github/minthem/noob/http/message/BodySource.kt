@@ -1,5 +1,8 @@
 package io.github.minthem.noob.http.message
 
+import io.github.minthem.noob.http.config.HttpLimitsConfig
+import io.github.minthem.noob.http.exception.BodySizeExceededException
+import io.github.minthem.noob.http.exception.ChunkTooLargeException
 import io.github.minthem.noob.http.io.ByteReadStream
 import java.io.ByteArrayOutputStream
 
@@ -50,7 +53,12 @@ internal class FixedLengthBodySource(
 
 internal class ChunkedBodySource(
     private val stream: ByteReadStream,
+    private val limitsConfig: HttpLimitsConfig,
 ) : BodySource {
+    init {
+        require(limitsConfig.maxChunkSizeBytes > 0) { "Chunk size limit must be greater than 0" }
+    }
+
     private enum class State {
         READING_CHUNK_SIZE,
         READING_CHUNK_DATA,
@@ -60,6 +68,7 @@ internal class ChunkedBodySource(
     private var state = State.READING_CHUNK_SIZE
     private var chunkRemain = 0L
     private var exhausted = false
+    private var totalRead = 0L
 
     override fun read(
         b: ByteArray,
@@ -88,6 +97,13 @@ internal class ChunkedBodySource(
                         continue
                     }
                     val chunkSize = line.substringBefore(";").toLong(16)
+                    if (limitsConfig.maxChunkSizeBytes < chunkSize) {
+                        exhausted = true
+                        throw ChunkTooLargeException(
+                            chunkSize = chunkSize,
+                            maxChunkSizeBytes = limitsConfig.maxChunkSizeBytes,
+                        )
+                    }
                     if (chunkSize == 0L) {
                         state = State.READING_TRAILER
                     } else {
@@ -97,12 +113,26 @@ internal class ChunkedBodySource(
                 }
 
                 State.READING_CHUNK_DATA -> {
+                    if (chunkRemain == 0L) {
+                        state = State.READING_CHUNK_SIZE
+                        continue
+                    }
                     val canRead = minOf(chunkRemain, len.toLong()).toInt()
                     val n = stream.read(b, off, canRead)
                     if (n > 0) {
                         chunkRemain -= n
+                        totalRead += n
+
                         if (chunkRemain == 0L) {
                             state = State.READING_CHUNK_SIZE
+                        }
+
+                        if (limitsConfig.maxRequestBodyBytes < totalRead) {
+                            exhausted = true
+                            throw BodySizeExceededException(
+                                actualBytesRead = totalRead,
+                                maxBodySizeBytes = limitsConfig.maxRequestBodyBytes,
+                            )
                         }
                     }
                     return n

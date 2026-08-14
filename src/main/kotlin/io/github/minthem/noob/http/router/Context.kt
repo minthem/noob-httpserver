@@ -8,6 +8,7 @@ import io.github.minthem.noob.http.multipart.MultipartBody
 import org.slf4j.LoggerFactory
 import java.io.Closeable
 import java.io.InputStream
+import java.io.OutputStream
 
 class Context internal constructor(
     private val req: HttpRequest,
@@ -30,7 +31,7 @@ class Context internal constructor(
 
     init {
         defer {
-            req.drainBody()
+            req.bodyStream.transferTo(OutputStream.nullOutputStream())
         }
     }
 

@@ -3,8 +3,9 @@ package io.github.minthem.noob.http.parser
 import io.github.minthem.noob.http.codec.CodecRegistry
 import io.github.minthem.noob.http.config.HttpLimitsConfig
 import io.github.minthem.noob.http.exception.BadRequestException
+import io.github.minthem.noob.http.exception.ContentLengthTooLargeException
 import io.github.minthem.noob.http.exception.UnsupportedBodyEncodingException
-import io.github.minthem.noob.http.io.BodySourceInputStream
+import io.github.minthem.noob.http.io.BodySourceAdapterInputStream
 import io.github.minthem.noob.http.io.ByteReadStream
 import io.github.minthem.noob.http.message.ChunkedBodySource
 import io.github.minthem.noob.http.message.FixedLengthBodySource
@@ -97,13 +98,20 @@ internal class HttpRequestParser(
             throw IllegalArgumentException("Content-Length and Transfer-Encoding headers are mutually exclusive")
         }
 
+        if (contentLength != null && config.maxRequestBodyBytes < contentLength) {
+            throw ContentLengthTooLargeException(
+                contentLength = contentLength,
+                maxContentLengthBytes = config.maxRequestBodyBytes,
+            )
+        }
+
         val source =
             when {
-                isChunked -> ChunkedBodySource(stream)
+                isChunked -> ChunkedBodySource(stream, config)
                 else -> FixedLengthBodySource(stream, contentLength ?: 0)
             }
 
-        return BodySourceInputStream(source)
+        return BodySourceAdapterInputStream(source)
     }
 
     private fun nextOrBadRequest(
