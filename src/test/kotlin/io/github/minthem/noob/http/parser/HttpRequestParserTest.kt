@@ -2,12 +2,11 @@ package io.github.minthem.noob.http.parser
 
 import io.github.minthem.noob.http.config.HttpLimitsConfig
 import io.github.minthem.noob.http.exception.ContentLengthTooLargeException
-import io.github.minthem.noob.http.exception.HttpResponseException
+import io.github.minthem.noob.http.exception.RequestParseException
 import io.github.minthem.noob.http.io.ByteChannelReadStream
 import io.github.minthem.noob.http.message.HttpMethod
 import io.github.minthem.noob.http.message.HttpProtocol
 import io.github.minthem.noob.http.message.HttpRequest
-import io.github.minthem.noob.http.message.HttpStatus
 import io.github.minthem.noob.http.message.ImmutableHttpHeaders
 import io.github.minthem.noob.http.message.RequestTarget
 import io.github.minthem.noob.http.testutil.FixedReadableByteChannel
@@ -22,6 +21,7 @@ import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNotNull
 
 class HttpRequestParserTest {
     private val config = HttpLimitsConfig()
@@ -393,7 +393,6 @@ class HttpRequestParserTest {
             )
         }
 
-
         @Test
         fun `parse should return a request when body size is exactly at limit`() {
             val bodyLimitConfig = 1024 * 1024
@@ -435,9 +434,8 @@ class HttpRequestParserTest {
                 )
             val channel = ByteChannelReadStream(socketMock, ByteBuffer.allocate(1024).flip())
             val parser = HttpRequestParser(headerParser, config)
-            val exp = assertThrows<HttpResponseException> { parser.parse(channel) }
-            assertEquals(HttpStatus.BAD_REQUEST, exp.httpResponse.status, "HTTPステータスがBAD_REQUESTであること")
-            assertEquals("close", exp.httpResponse.headers["Connection"], "Connectionヘッダーがcloseであること")
+            val exp = assertThrows<RequestParseException> { parser.parse(channel) }
+            assertNotNull(exp.message)
         }
 
         @ParameterizedTest
@@ -455,9 +453,8 @@ class HttpRequestParserTest {
             val channel = ByteChannelReadStream(socketMock, ByteBuffer.allocate(1024).flip())
             val parser = HttpRequestParser(headerParser, config)
 
-            val exp = assertThrows<HttpResponseException> { parser.parse(channel) }
-            assertEquals(HttpStatus.BAD_REQUEST, exp.httpResponse.status, "HTTPステータスがBAD_REQUESTであること")
-            assertEquals("close", exp.httpResponse.headers["Connection"], "Connectionヘッダーがcloseであること")
+            val exp = assertThrows<RequestParseException> { parser.parse(channel) }
+            assertNotNull(exp.message)
         }
 
         @Test
@@ -473,9 +470,8 @@ class HttpRequestParserTest {
                 )
             val channel = ByteChannelReadStream(socketMock, ByteBuffer.allocate(1024).flip())
             val parser = HttpRequestParser(headerParser, config)
-            val exp = assertThrows<HttpResponseException> { parser.parse(channel) }
-            assertEquals(HttpStatus.BAD_REQUEST, exp.httpResponse.status, "HTTPステータスがBAD_REQUESTであること")
-            assertEquals("close", exp.httpResponse.headers["Connection"], "Connectionヘッダーがcloseであること")
+            val exp = assertThrows<RequestParseException> { parser.parse(channel) }
+            assertEquals("Invalid header name", exp.message)
         }
 
         @Test
@@ -494,9 +490,8 @@ class HttpRequestParserTest {
             val channel = ByteChannelReadStream(socketMock, ByteBuffer.allocate(1024).flip())
             val headerConfig = HttpLimitsConfig(maxHeaderNameBytes = 255)
             val parser = HttpRequestParser(HttpHeadersParser(headerConfig), config)
-            val exp = assertThrows<HttpResponseException> { parser.parse(channel) }
-            assertEquals(HttpStatus.BAD_REQUEST, exp.httpResponse.status, "HTTPステータスがBAD_REQUESTであること")
-            assertEquals("close", exp.httpResponse.headers["Connection"], "Connectionヘッダーがcloseであること")
+            val exp = assertThrows<RequestParseException> { parser.parse(channel) }
+            assertEquals("Too many header name bytes", exp.message)
         }
 
         @Test
@@ -513,9 +508,8 @@ class HttpRequestParserTest {
 
             val channel = ByteChannelReadStream(socketMock, ByteBuffer.allocate(1024).flip())
             val parser = HttpRequestParser(headerParser, config)
-            val exp = assertThrows<HttpResponseException> { parser.parse(channel) }
-            assertEquals(HttpStatus.BAD_REQUEST, exp.httpResponse.status, "HTTPステータスがBAD_REQUESTであること")
-            assertEquals("close", exp.httpResponse.headers["Connection"], "Connectionヘッダーがcloseであること")
+            val exp = assertThrows<RequestParseException> { parser.parse(channel) }
+            assertEquals("Invalid header value", exp.message)
         }
 
         @Test
@@ -538,9 +532,8 @@ class HttpRequestParserTest {
 
             val channel = ByteChannelReadStream(socketMock, ByteBuffer.allocate(1024).flip())
             val parser = HttpRequestParser(headerParser, config)
-            val exp = assertThrows<HttpResponseException> { parser.parse(channel) }
-            assertEquals(HttpStatus.BAD_REQUEST, exp.httpResponse.status, "HTTPステータスがBAD_REQUESTであること")
-            assertEquals("close", exp.httpResponse.headers["Connection"], "Connectionヘッダーがcloseであること")
+            val exp = assertThrows<RequestParseException> { parser.parse(channel) }
+            assertEquals("Content-Length and Transfer-Encoding headers are mutually exclusive", exp.message)
         }
 
         @Test
@@ -556,9 +549,8 @@ class HttpRequestParserTest {
                 )
             val channel = ByteChannelReadStream(socketMock, ByteBuffer.allocate(1024).flip())
             val parser = HttpRequestParser(headerParser, config)
-            val exp = assertThrows<HttpResponseException> { parser.parse(channel) }
-            assertEquals(HttpStatus.BAD_REQUEST, exp.httpResponse.status, "HTTPステータスがBAD_REQUESTであること")
-            assertEquals("close", exp.httpResponse.headers["Connection"], "Connectionヘッダーがcloseであること")
+            val exp = assertThrows<RequestParseException> { parser.parse(channel) }
+            assertNotNull(exp.message)
         }
 
         @Test
@@ -576,9 +568,8 @@ class HttpRequestParserTest {
                 )
             val channel = ByteChannelReadStream(socketMock, ByteBuffer.allocate(1024).flip())
             val parser = HttpRequestParser(headerParser, HttpLimitsConfig(maxRequestTargetBytes = 1000))
-            val exp = assertThrows<HttpResponseException> { parser.parse(channel) }
-            assertEquals(HttpStatus.BAD_REQUEST, exp.httpResponse.status, "HTTPステータスがBAD_REQUESTであること")
-            assertEquals("close", exp.httpResponse.headers["Connection"], "Connectionヘッダーがcloseであること")
+            val exp = assertThrows<RequestParseException> { parser.parse(channel) }
+            assertEquals("Invalid request target", exp.message)
         }
 
         @Test
@@ -595,9 +586,8 @@ class HttpRequestParserTest {
             val channel = ByteChannelReadStream(socketMock, ByteBuffer.allocate(1024).flip())
             val parser = HttpRequestParser(headerParser, config)
 
-            val exp = assertThrows<HttpResponseException> { parser.parse(channel) }
-            assertEquals(HttpStatus.BAD_REQUEST, exp.httpResponse.status)
-            assertEquals("close", exp.httpResponse.headers["Connection"])
+            val exp = assertThrows<RequestParseException> { parser.parse(channel) }
+            assertNotNull(exp.message)
         }
 
         @Test
@@ -614,9 +604,8 @@ class HttpRequestParserTest {
             val channel = ByteChannelReadStream(socketMock, ByteBuffer.allocate(1024).flip())
             val parser = HttpRequestParser(headerParser, config)
 
-            val exp = assertThrows<HttpResponseException> { parser.parse(channel) }
-            assertEquals(HttpStatus.BAD_REQUEST, exp.httpResponse.status)
-            assertEquals("close", exp.httpResponse.headers["Connection"])
+            val exp = assertThrows<RequestParseException> { parser.parse(channel) }
+            assertNotNull(exp.message)
         }
 
         @Test
@@ -631,9 +620,8 @@ class HttpRequestParserTest {
             val channel = ByteChannelReadStream(socketMock, ByteBuffer.allocate(1024).flip())
             val parser = HttpRequestParser(headerParser, config)
 
-            val exp = assertThrows<HttpResponseException> { parser.parse(channel) }
-            assertEquals(HttpStatus.BAD_REQUEST, exp.httpResponse.status)
-            assertEquals("close", exp.httpResponse.headers["Connection"])
+            val exp = assertThrows<RequestParseException> { parser.parse(channel) }
+            assertNotNull(exp.message)
         }
 
         @Test
@@ -651,9 +639,8 @@ class HttpRequestParserTest {
             val channel = ByteChannelReadStream(socketMock, ByteBuffer.allocate(1024).flip())
             val parser = HttpRequestParser(headerParser, config)
 
-            val exp = assertThrows<HttpResponseException> { parser.parse(channel) }
-            assertEquals(HttpStatus.BAD_REQUEST, exp.httpResponse.status)
-            assertEquals("close", exp.httpResponse.headers["Connection"])
+            val exp = assertThrows<RequestParseException> { parser.parse(channel) }
+            assertEquals("Invalid Content-Length header", exp.message)
         }
 
         @Test
@@ -671,9 +658,8 @@ class HttpRequestParserTest {
             val channel = ByteChannelReadStream(socketMock, ByteBuffer.allocate(1024).flip())
             val parser = HttpRequestParser(headerParser, config)
 
-            val exp = assertThrows<HttpResponseException> { parser.parse(channel) }
-            assertEquals(HttpStatus.BAD_REQUEST, exp.httpResponse.status)
-            assertEquals("close", exp.httpResponse.headers["Connection"])
+            val exp = assertThrows<RequestParseException> { parser.parse(channel) }
+            assertEquals("Invalid Content-Length header", exp.message)
         }
 
         @Test
@@ -693,9 +679,10 @@ class HttpRequestParserTest {
             val channel = ByteChannelReadStream(socketMock, ByteBuffer.allocate(1024).flip())
             val parser = HttpRequestParser(headerParser, HttpLimitsConfig(maxRequestBodyBytes = bodyLimitConfig.toLong()))
 
-            val exp = assertFailsWith<ContentLengthTooLargeException> {
-                parser.parse(channel)
-            }
+            val exp =
+                assertFailsWith<ContentLengthTooLargeException> {
+                    parser.parse(channel)
+                }
 
             assertEquals(largeBody.length.toLong(), exp.contentLength)
             assertEquals(bodyLimitConfig.toLong(), exp.limitBytes)

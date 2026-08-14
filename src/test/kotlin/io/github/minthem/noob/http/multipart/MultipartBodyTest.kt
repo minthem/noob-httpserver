@@ -1,5 +1,6 @@
 package io.github.minthem.noob.http.multipart
 
+import io.github.minthem.noob.http.exception.MalformedMultipartException
 import java.io.ByteArrayInputStream
 import java.nio.file.Files
 import kotlin.test.Test
@@ -185,7 +186,7 @@ internal class MultipartBodyTest {
                 boundary = "boundary",
             )
 
-        assertFailsWith<IllegalArgumentException> {
+        assertFailsWith<MalformedMultipartException> {
             body.part("part1")
         }
     }

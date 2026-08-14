@@ -2,6 +2,7 @@ package io.github.minthem.noob.http.server
 
 import io.github.minthem.noob.http.config.ServerConfig
 import io.github.minthem.noob.http.exception.HttpResponseException
+import io.github.minthem.noob.http.exception.RequestParseException
 import io.github.minthem.noob.http.exception.RouteNotFoundException
 import io.github.minthem.noob.http.interceptor.Chain
 import io.github.minthem.noob.http.interceptor.Interceptor
@@ -278,12 +279,11 @@ class RequestHandlerTest {
             )
 
         val actual =
-            assertFailsWith<HttpResponseException> {
+            assertFailsWith<RequestParseException> {
                 handler.process(stream)
             }
 
-        assertEquals(HttpStatus.BAD_REQUEST, actual.httpResponse.status)
-        assertEquals("close", actual.httpResponse.headers["connection"])
+        assertEquals("Invalid method", actual.message)
     }
 
     private fun requestStream(requestLine: String): ByteChannelReadStream =

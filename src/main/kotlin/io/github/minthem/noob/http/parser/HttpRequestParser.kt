@@ -2,8 +2,8 @@ package io.github.minthem.noob.http.parser
 
 import io.github.minthem.noob.http.codec.CodecRegistry
 import io.github.minthem.noob.http.config.HttpLimitsConfig
-import io.github.minthem.noob.http.exception.BadRequestException
 import io.github.minthem.noob.http.exception.ContentLengthTooLargeException
+import io.github.minthem.noob.http.exception.RequestParseException
 import io.github.minthem.noob.http.exception.UnsupportedBodyEncodingException
 import io.github.minthem.noob.http.io.BodySourceAdapterInputStream
 import io.github.minthem.noob.http.io.ByteReadStream
@@ -25,19 +25,24 @@ internal class HttpRequestParser(
     private val config: HttpLimitsConfig,
     private val codecRegistry: CodecRegistry = CodecRegistry(),
 ) {
+    /**
+     * Parses an HTTP request from the given byte stream.
+     *
+     * @param stream The input stream containing the raw HTTP request data to be parsed.
+     * @return An instance of [HttpRequest] containing the parsed HTTP method, request target,
+     * protocol, headers, and body stream.
+     * @throws RequestParseException If the request data is invalid or malformed.
+     * @throws ContentLengthTooLargeException If the content length exceeds the maximum allowed limit.
+     */
     fun parse(stream: ByteReadStream): HttpRequest {
-        try {
-            val method = readMethod(stream)
-            val requestTarget = readRequestTarget(stream)
-            val protocol = readProtocol(stream)
-            val headers = readHeaders(stream)
-            val bodyStream = getInputStreamForRequestBody(stream, headers)
-            val stream = wrapBodyDecoder(bodyStream, headers)
+        val method = readMethod(stream)
+        val requestTarget = readRequestTarget(stream)
+        val protocol = readProtocol(stream)
+        val headers = readHeaders(stream)
+        val bodyStream = getInputStreamForRequestBody(stream, headers)
+        val stream = wrapBodyDecoder(bodyStream, headers)
 
-            return HttpRequest(method, requestTarget, protocol, headers, stream)
-        } catch (e: IllegalArgumentException) {
-            throw BadRequestException(e.message ?: "Invalid request", e)
-        }
+        return HttpRequest(method, requestTarget, protocol, headers, stream)
     }
 
     private fun readMethod(stream: ByteReadStream): HttpMethod {
@@ -49,10 +54,14 @@ internal class HttpRequestParser(
             }
             sb.append(c.toInt().toChar())
             if (sb.length > 10) {
-                throw IllegalArgumentException("Invalid method")
+                throw RequestParseException("Invalid method")
             }
         }
-        return HttpMethod.fromString(sb.toString())
+        return try {
+            HttpMethod.fromString(sb.toString())
+        } catch (e: IllegalArgumentException) {
+            throw RequestParseException("Invalid method: $sb", e)
+        }
     }
 
     private fun readRequestTarget(stream: ByteReadStream): RequestTarget =
@@ -70,32 +79,41 @@ internal class HttpRequestParser(
                 }
 
                 // CRはProtocolは無いはず
-                throw IllegalArgumentException("Invalid protocol")
+                throw RequestParseException("Invalid protocol")
             }
             sb.append(c.toInt().toChar())
             if (sb.length > 8) {
-                throw IllegalArgumentException("Invalid protocol")
+                throw RequestParseException("Invalid protocol")
             }
         }
-        return HttpProtocol.fromString(sb.toString())
+        return try {
+            HttpProtocol.fromString(sb.toString())
+        } catch (e: IllegalArgumentException) {
+            throw RequestParseException("Invalid protocol: $sb", e)
+        }
     }
 
     private fun readHeaders(stream: ByteReadStream): HttpHeaders =
         try {
             headerParser.parse(stream)
         } catch (_: EOFException) {
-            throw IllegalArgumentException("Unexpected end of stream while reading headers")
+            throw RequestParseException("Unexpected end of stream while reading headers")
         }
 
     private fun getInputStreamForRequestBody(
         stream: ByteReadStream,
         headers: HttpHeaders,
     ): InputStream {
-        val contentLength = headers.contentLength
+        val contentLength =
+            try {
+                headers.contentLength
+            } catch (e: IllegalArgumentException) {
+                throw RequestParseException("Invalid Content-Length header", e)
+            }
         val isChunked = headers["Transfer-Encoding"]?.equals("chunked", ignoreCase = true) ?: false
 
         if (contentLength != null && isChunked) {
-            throw IllegalArgumentException("Content-Length and Transfer-Encoding headers are mutually exclusive")
+            throw RequestParseException("Content-Length and Transfer-Encoding headers are mutually exclusive")
         }
 
         if (contentLength != null && config.maxRequestBodyBytes < contentLength) {
@@ -121,7 +139,7 @@ internal class HttpRequestParser(
         try {
             stream.next()
         } catch (_: EOFException) {
-            throw IllegalArgumentException(message)
+            throw RequestParseException(message)
         }
 
     private fun peekOrBadRequest(
@@ -131,7 +149,7 @@ internal class HttpRequestParser(
         try {
             stream.peak()
         } catch (_: EOFException) {
-            throw IllegalArgumentException(message)
+            throw RequestParseException(message)
         }
 
     private fun wrapBodyDecoder(

@@ -1,6 +1,7 @@
 package io.github.minthem.noob.http.parser
 
 import io.github.minthem.noob.http.config.HttpLimitsConfig
+import io.github.minthem.noob.http.exception.RequestParseException
 import io.github.minthem.noob.http.io.ByteReadStream
 import io.github.minthem.noob.http.message.HttpHeaders
 import io.github.minthem.noob.http.message.MutableHttpHeaders
@@ -23,22 +24,22 @@ internal class HttpHeadersParser(
 
                 totalBytes++
                 if (totalBytes > config.maxHeaderSectionBytes) {
-                    throw IllegalArgumentException("Too many header bytes")
+                    throw RequestParseException("Too many header bytes")
                 }
                 state = state.next(b)
 
                 if (state == HttpHeadersState.INVALID) {
-                    throw IllegalArgumentException("Invalid header name")
+                    throw RequestParseException("Invalid header name")
                 } else if (state == HttpHeadersState.HEADER_NAME) {
                     buffer.append(b.toInt().toChar())
                     if (buffer.length > config.maxHeaderNameBytes) {
-                        throw IllegalArgumentException("Too many header name bytes")
+                        throw RequestParseException("Too many header name bytes")
                     }
                 } else if (state == HttpHeadersState.HEADER_NAME_END) {
                     break@header
                 } else if (state == HttpHeadersState.HEADER_SECTION_END_LF) {
                     if (buffer.isNotEmpty()) {
-                        throw IllegalArgumentException("Invalid header")
+                        throw RequestParseException("Invalid header")
                     }
                     break@section
                 }
@@ -46,7 +47,7 @@ internal class HttpHeadersParser(
 
             val fieldName = buffer.toString()
             if (fieldName.isEmpty()) {
-                throw IllegalArgumentException("Invalid header name")
+                throw RequestParseException("Invalid header name")
             }
             buffer.clear()
 
@@ -55,16 +56,16 @@ internal class HttpHeadersParser(
 
                 totalBytes++
                 if (totalBytes > config.maxHeaderSectionBytes) {
-                    throw IllegalArgumentException("Too many header bytes")
+                    throw RequestParseException("Too many header bytes")
                 }
                 state = state.next(b)
 
                 if (state == HttpHeadersState.INVALID) {
-                    throw IllegalArgumentException("Invalid header value")
+                    throw RequestParseException("Invalid header value")
                 } else if (state == HttpHeadersState.HEADER_VALUE) {
                     buffer.append(b.toInt().toChar())
                     if (buffer.length > config.maxHeaderValueBytes) {
-                        throw IllegalArgumentException("Too many header value bytes")
+                        throw RequestParseException("Too many header value bytes")
                     }
                 } else if (state == HttpHeadersState.HEADER_END_LF) {
                     break@value
@@ -77,7 +78,7 @@ internal class HttpHeadersParser(
 
             headerCount++
             if (headerCount > config.maxHeaderCount) {
-                throw IllegalArgumentException("Too many headers")
+                throw RequestParseException("Too many headers")
             }
         }
 
@@ -88,7 +89,7 @@ internal class HttpHeadersParser(
         try {
             stream.next()
         } catch (_: EOFException) {
-            throw IllegalArgumentException("Unexpected end of stream in headers")
+            throw RequestParseException("Unexpected end of stream in headers")
         }
 }
 

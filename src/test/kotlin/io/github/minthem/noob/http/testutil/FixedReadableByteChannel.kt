@@ -10,13 +10,14 @@ class FixedReadableByteChannel(
         val firstBytes = bytes.firstOrNull() ?: return -1
         bytes = bytes.drop(1)
 
-        val putBytes = if (firstBytes.size > p0.remaining()) {
-            val bytesToRead = p0.remaining()
-            bytes = listOf(firstBytes.sliceArray(bytesToRead until firstBytes.size)) + bytes
-            firstBytes.sliceArray(0 until bytesToRead)
-        } else {
-            firstBytes
-        }
+        val putBytes =
+            if (firstBytes.size > p0.remaining()) {
+                val bytesToRead = p0.remaining()
+                bytes = listOf(firstBytes.sliceArray(bytesToRead until firstBytes.size)) + bytes
+                firstBytes.sliceArray(0 until bytesToRead)
+            } else {
+                firstBytes
+            }
 
         p0.put(putBytes)
         return firstBytes.size

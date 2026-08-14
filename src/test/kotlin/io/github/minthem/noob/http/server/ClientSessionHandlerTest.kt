@@ -311,13 +311,15 @@ class ClientSessionHandlerTest {
                 )
             }
 
-        val limitConfig = HttpLimitsConfig(
-            maxRequestBodyBytes = 1025,
-        )
-        val requestParser = HttpRequestParser(
-            headerParser = HttpHeadersParser(limitConfig),
-            config = limitConfig,
-        )
+        val limitConfig =
+            HttpLimitsConfig(
+                maxRequestBodyBytes = 1025,
+            )
+        val requestParser =
+            HttpRequestParser(
+                headerParser = HttpHeadersParser(limitConfig),
+                config = limitConfig,
+            )
 
         val sessionHandler =
             ClientSessionHandler(
@@ -360,7 +362,6 @@ class ClientSessionHandlerTest {
         assertContains(actual, "connection: close\r\n")
     }
 
-
     @Test
     fun `handle writes payload too large response when chunk size exceeds limit`() {
         val registry =
@@ -377,13 +378,15 @@ class ClientSessionHandlerTest {
                 )
             }
 
-        val limitConfig = HttpLimitsConfig(
-            maxChunkSizeBytes = 1024,
-        )
-        val requestParser = HttpRequestParser(
-            headerParser = HttpHeadersParser(limitConfig),
-            config = limitConfig,
-        )
+        val limitConfig =
+            HttpLimitsConfig(
+                maxChunkSizeBytes = 1024,
+            )
+        val requestParser =
+            HttpRequestParser(
+                headerParser = HttpHeadersParser(limitConfig),
+                config = limitConfig,
+            )
 
         val sessionHandler =
             ClientSessionHandler(
@@ -436,13 +439,15 @@ class ClientSessionHandlerTest {
                 )
             }
 
-        val limitConfig = HttpLimitsConfig(
-            maxRequestBodyBytes = 1025,
-        )
-        val requestParser = HttpRequestParser(
-            headerParser = HttpHeadersParser(limitConfig),
-            config = limitConfig,
-        )
+        val limitConfig =
+            HttpLimitsConfig(
+                maxRequestBodyBytes = 1025,
+            )
+        val requestParser =
+            HttpRequestParser(
+                headerParser = HttpHeadersParser(limitConfig),
+                config = limitConfig,
+            )
 
         val sessionHandler =
             ClientSessionHandler(
@@ -450,7 +455,12 @@ class ClientSessionHandlerTest {
                 writer = responseWriter,
                 keepAliveManager = KeepAliveManager(timeoutExecutor, config.keepAlive),
                 timeoutExecutor = timeoutExecutor,
-                timeoutConfig = config.timeouts.copy(readMillis = 1000, writeMillis = 1000, sessionMillis = 1000), // Ensure quick failure if it blocks
+                timeoutConfig =
+                    config.timeouts.copy( // Ensure quick failure if it blocks
+                        readMillis = 1000,
+                        writeMillis = 1000,
+                        sessionMillis = 1000,
+                    ),
                 requestBufferSize = config.buffers.requestBytes,
             )
 

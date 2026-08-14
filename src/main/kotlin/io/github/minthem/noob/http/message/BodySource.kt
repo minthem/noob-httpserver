@@ -3,6 +3,7 @@ package io.github.minthem.noob.http.message
 import io.github.minthem.noob.http.config.HttpLimitsConfig
 import io.github.minthem.noob.http.exception.BodySizeExceededException
 import io.github.minthem.noob.http.exception.ChunkTooLargeException
+import io.github.minthem.noob.http.exception.MalformedChunkException
 import io.github.minthem.noob.http.io.ByteReadStream
 import java.io.ByteArrayOutputStream
 
@@ -92,11 +93,13 @@ internal class ChunkedBodySource(
                 State.READING_CHUNK_SIZE -> {
                     val line = readLine()
 
-                    // chunk-data末尾のCRLFを読み飛ばす
-                    if (line.isEmpty()) {
-                        continue
-                    }
-                    val chunkSize = line.substringBefore(";").toLong(16)
+                    val chunkSize =
+                        try {
+                            line.substringBefore(";").toLong(16)
+                        } catch (e: NumberFormatException) {
+                            exhausted = true
+                            throw MalformedChunkException("Invalid chunk size: $line", e)
+                        }
                     if (limitsConfig.maxChunkSizeBytes < chunkSize) {
                         exhausted = true
                         throw ChunkTooLargeException(
@@ -114,6 +117,7 @@ internal class ChunkedBodySource(
 
                 State.READING_CHUNK_DATA -> {
                     if (chunkRemain == 0L) {
+                        consumeCrLf()
                         state = State.READING_CHUNK_SIZE
                         continue
                     }
@@ -124,6 +128,7 @@ internal class ChunkedBodySource(
                         totalRead += n
 
                         if (chunkRemain == 0L) {
+                            consumeCrLf()
                             state = State.READING_CHUNK_SIZE
                         }
 
@@ -162,5 +167,14 @@ internal class ChunkedBodySource(
         }
 
         return buffer.toString()
+    }
+
+    private fun consumeCrLf() {
+        val cr = stream.next()
+        val lf = stream.next()
+        if (cr != '\r'.code.toByte() || lf != '\n'.code.toByte()) {
+            exhausted = true
+            throw MalformedChunkException("Expected CRLF after chunk data")
+        }
     }
 }
