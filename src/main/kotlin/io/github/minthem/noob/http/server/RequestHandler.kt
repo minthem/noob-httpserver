@@ -24,10 +24,10 @@ internal class RequestHandler(
      */
     fun process(stream: ByteReadStream): RequestHandlingResult {
         val request = parser.parse(stream)
+        val route = routeResolver.resolve(request)
 
         val response =
             try {
-                val route = routeResolver.resolve(request)
                 val response =
                     Context(request, route.pathParams).use {
                         interceptorRegistry.interceptHandler(
