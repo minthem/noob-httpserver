@@ -3,7 +3,7 @@ package io.github.minthem.noob.http.io
 import io.github.minthem.noob.http.message.BodySource
 import java.io.InputStream
 
-internal class BodySourceInputStream(
+internal class BodySourceAdapterInputStream(
     private val source: BodySource,
 ) : InputStream() {
     override fun read(): Int {

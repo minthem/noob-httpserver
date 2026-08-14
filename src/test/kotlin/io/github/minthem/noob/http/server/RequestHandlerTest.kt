@@ -2,6 +2,8 @@ package io.github.minthem.noob.http.server
 
 import io.github.minthem.noob.http.config.ServerConfig
 import io.github.minthem.noob.http.exception.HttpResponseException
+import io.github.minthem.noob.http.exception.RequestParseException
+import io.github.minthem.noob.http.exception.RouteNotFoundException
 import io.github.minthem.noob.http.interceptor.Chain
 import io.github.minthem.noob.http.interceptor.Interceptor
 import io.github.minthem.noob.http.interceptor.InterceptorRegistry
@@ -159,12 +161,17 @@ class RequestHandlerTest {
                 ByteBuffer.allocate(1024).flip(),
             )
 
-        val actual = handler.process(stream)
+        val exp =
+            assertFailsWith<RouteNotFoundException> {
+                handler.process(stream)
+            }
 
-        assertEquals(HttpMethod.GET, actual.request.method)
-        assertEquals(RequestTarget("/missing"), actual.request.path)
-        assertEquals(HttpStatus.NOT_FOUND, actual.response.status)
-        assertEquals("close", actual.response.headers["connection"])
+        assertEquals(HttpMethod.GET, exp.method)
+        assertEquals(RequestTarget("/missing"), exp.requestTarget)
+
+        val response = exp.httpResponse
+        assertEquals(HttpStatus.NOT_FOUND, response.status)
+        assertEquals("close", response.headers["connection"])
     }
 
     @Test
@@ -272,12 +279,11 @@ class RequestHandlerTest {
             )
 
         val actual =
-            assertFailsWith<HttpResponseException> {
+            assertFailsWith<RequestParseException> {
                 handler.process(stream)
             }
 
-        assertEquals(HttpStatus.BAD_REQUEST, actual.httpResponse.status)
-        assertEquals("close", actual.httpResponse.headers["connection"])
+        assertEquals("Invalid method", actual.message)
     }
 
     private fun requestStream(requestLine: String): ByteChannelReadStream =

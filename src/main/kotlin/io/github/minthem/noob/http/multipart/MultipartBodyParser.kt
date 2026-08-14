@@ -1,5 +1,6 @@
 package io.github.minthem.noob.http.multipart
 
+import io.github.minthem.noob.http.exception.MalformedMultipartException
 import io.github.minthem.noob.http.message.HttpHeaders
 import io.github.minthem.noob.http.message.MutableHttpHeaders
 import io.github.minthem.noob.http.message.contentDisposition
@@ -36,21 +37,13 @@ internal class MultipartBodyParser(
     private var exhausted = false
 
     /**
-     * Parses and retrieves the next part from the multipart body.
+     * Reads the next multipart section from the input stream, processes its headers, and extracts its body content.
+     * This method is responsible for determining whether the part represents a form field or a file upload,
+     * constructing the respective `Multipart` object, and returning it. If the stream has been completely
+     * processed, it consumes any remaining content and returns `null`.
      *
-     * This method processes the multipart stream, consuming the boundary and extracting headers and content
-     * for the next part. It supports both form fields and file uploads:
-     * - If the part represents a form field, a `Multipart.FormField` instance is returned.
-     * - If the part represents a file upload, a `Multipart.FileUpload` instance is returned, with the file
-     *   temporarily stored in the filesystem.
-     *
-     * If the end of the multipart body is reached, the method consumes the remaining body content and
-     * returns `null`.
-     *
-     * @return The next parsed `Multipart` part, either a form field or file upload; or `null` if the body
-     *         is fully consumed.
-     * @throws IllegalArgumentException If the part does not contain a valid `Content-Disposition` header
-     *         or if the header is invalid.
+     * @return A `Multipart` object representing the next part of the multipart request, or `null` if no parts remain.
+     * @throws MalformedMultipartException If the multipart data or headers are invalid.
      */
     fun nextPart(): Multipart? {
         consumeBoundary()
@@ -62,16 +55,13 @@ internal class MultipartBodyParser(
         }
 
         val headers = parseHeaders()
-        if (!headers.contains("Content-Disposition")) {
-            throw IllegalArgumentException("Multipart body must contain a Content-Disposition header")
-        }
 
         val disposition =
             headers.contentDisposition
-                ?: throw IllegalArgumentException("Invalid Content-Disposition header")
+                ?: throw MalformedMultipartException("Invalid Content-Disposition header")
 
         val filename = disposition.filename
-        val name = disposition.name ?: throw IllegalArgumentException("Invalid Content-Disposition header")
+        val name = disposition.name ?: throw MalformedMultipartException("Invalid Content-Disposition header")
         val charset = headers.contentType?.charset ?: Charsets.UTF_8
 
         return if (filename == null) {
@@ -185,7 +175,7 @@ internal class MultipartBodyParser(
 
             // ここで改行以外が来るのはおかしい
             if (bnc[0] != '\r'.code.toByte() || bnc[1] != '\n'.code.toByte()) {
-                throw IllegalArgumentException("Invalid multipart boundary")
+                throw MalformedMultipartException("Invalid multipart boundary")
             }
 
             // パートのヘッダ先頭にpositionが来ているはず
@@ -196,7 +186,7 @@ internal class MultipartBodyParser(
     private fun refillBuffer() {
         buffer.compact()
         val n = channel.read(buffer)
-        if (n == -1) throw IllegalStateException("Unexpected end of stream")
+        if (n == -1) throw MalformedMultipartException("Unexpected end of stream")
         buffer.flip()
     }
 

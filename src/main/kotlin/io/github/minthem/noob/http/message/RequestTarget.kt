@@ -1,5 +1,6 @@
 package io.github.minthem.noob.http.message
 
+import io.github.minthem.noob.http.exception.RequestParseException
 import io.github.minthem.noob.http.io.ByteReadStream
 import io.github.minthem.noob.http.util.UriDecoder
 import java.io.EOFException
@@ -47,12 +48,12 @@ internal object RequestTargetParser {
                 try {
                     stream.next()
                 } catch (_: EOFException) {
-                    throw IllegalArgumentException("Unexpected end of stream in request target")
+                    throw RequestParseException("Unexpected end of stream in request target")
                 }
 
             state = state.next(c)
             if (state == RequestTargetState.INVALID) {
-                throw IllegalArgumentException(
+                throw RequestParseException(
                     "Invalid character in request target: '${
                         c.toInt().toChar()
                     }' (hex: ${c.toString(16)}, index: $index)",
@@ -66,7 +67,7 @@ internal object RequestTargetParser {
             sb.append(c.toInt().toChar())
             index++
             if (limit < sb.length) {
-                throw IllegalArgumentException("Invalid request target")
+                throw RequestParseException("Invalid request target")
             }
         }
 

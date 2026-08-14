@@ -1,6 +1,7 @@
 package io.github.minthem.noob.http.parser
 
 import io.github.minthem.noob.http.config.HttpLimitsConfig
+import io.github.minthem.noob.http.exception.RequestParseException
 import io.github.minthem.noob.http.io.ByteChannelReadStream
 import io.github.minthem.noob.http.testutil.FixedReadableByteChannel
 import java.nio.ByteBuffer
@@ -53,7 +54,7 @@ class HttpHeadersParserTest {
             )
 
         val actual =
-            assertFailsWith<IllegalArgumentException> {
+            assertFailsWith<RequestParseException> {
                 parser.parse(stream)
             }
 
@@ -80,7 +81,7 @@ class HttpHeadersParserTest {
             )
 
         val actual =
-            assertFailsWith<IllegalArgumentException> {
+            assertFailsWith<RequestParseException> {
                 parser.parse(stream)
             }
 
@@ -107,7 +108,7 @@ class HttpHeadersParserTest {
             )
 
         val actual =
-            assertFailsWith<IllegalArgumentException> {
+            assertFailsWith<RequestParseException> {
                 parser.parse(stream)
             }
 
@@ -135,7 +136,7 @@ class HttpHeadersParserTest {
             )
 
         val actual =
-            assertFailsWith<IllegalArgumentException> {
+            assertFailsWith<RequestParseException> {
                 parser.parse(stream)
             }
 

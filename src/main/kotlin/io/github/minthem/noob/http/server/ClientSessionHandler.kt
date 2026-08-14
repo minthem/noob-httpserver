@@ -2,6 +2,9 @@ package io.github.minthem.noob.http.server
 
 import io.github.minthem.noob.http.config.TimeoutConfig
 import io.github.minthem.noob.http.exception.HttpResponseException
+import io.github.minthem.noob.http.exception.MalformedBodyException
+import io.github.minthem.noob.http.exception.PayloadTooLargeException
+import io.github.minthem.noob.http.exception.RequestParseException
 import io.github.minthem.noob.http.io.ByteChannelReadStream
 import io.github.minthem.noob.http.io.TimeoutByteChannel
 import io.github.minthem.noob.http.io.TimeoutExecutor
@@ -82,6 +85,36 @@ internal class ClientSessionHandler(
                     }
                 }
             }
+        } catch (e: PayloadTooLargeException) {
+            logger.error("Payload too large. {}", e.message, e)
+            val response =
+                HttpResponse.build {
+                    status = HttpStatus.PAYLOAD_TOO_LARGE
+                    header("Connection", "close")
+                    body("Payload too large")
+                }
+            val prepared = responsePreparer.prepare(FallbackRequestMetadata(), response)
+            writer.write(channel, prepared)
+        } catch (e: RequestParseException) {
+            logger.error("Request parse error. {}", e.message, e)
+            val response =
+                HttpResponse.build {
+                    status = HttpStatus.BAD_REQUEST
+                    header("Connection", "close")
+                    body("Bad request")
+                }
+            val prepared = responsePreparer.prepare(FallbackRequestMetadata(), response)
+            writer.write(channel, prepared)
+        } catch (e: MalformedBodyException) {
+            logger.error("Malformed body. {}", e.message, e)
+            val response =
+                HttpResponse.build {
+                    status = HttpStatus.BAD_REQUEST
+                    header("Connection", "close")
+                    body("Malformed body")
+                }
+            val prepared = responsePreparer.prepare(FallbackRequestMetadata(), response)
+            writer.write(channel, prepared)
         } catch (e: IllegalStateException) {
             if (!socket.isOpen) {
                 /**

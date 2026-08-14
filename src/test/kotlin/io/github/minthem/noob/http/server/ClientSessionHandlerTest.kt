@@ -1,5 +1,6 @@
 package io.github.minthem.noob.http.server
 
+import io.github.minthem.noob.http.config.HttpLimitsConfig
 import io.github.minthem.noob.http.config.KeepAliveConfig
 import io.github.minthem.noob.http.config.ServerConfig
 import io.github.minthem.noob.http.interceptor.InterceptorRegistry
@@ -291,6 +292,202 @@ class ClientSessionHandlerTest {
 
         val actual = channel.writtenText()
         assertTrue(actual.startsWith("HTTP/1.1 500 Internal Server Error\r\n"))
+        assertContains(actual, "connection: close\r\n")
+    }
+
+    @Test
+    fun `handle writes payload too large response when request body exceeds limit`() {
+        val registry =
+            RouterRegistry().also {
+                it.register(
+                    Router {
+                        post("/large-body") { ctx ->
+                            HttpResponse.build {
+                                status = HttpStatus.OK
+                                body(ctx.bodyAsBytes())
+                            }
+                        }
+                    },
+                )
+            }
+
+        val limitConfig =
+            HttpLimitsConfig(
+                maxRequestBodyBytes = 1025,
+            )
+        val requestParser =
+            HttpRequestParser(
+                headerParser = HttpHeadersParser(limitConfig),
+                config = limitConfig,
+            )
+
+        val sessionHandler =
+            ClientSessionHandler(
+                handler = RequestHandler(requestParser, RouteResolver(registry), InterceptorRegistry()),
+                writer = responseWriter,
+                keepAliveManager = KeepAliveManager(timeoutExecutor, config.keepAlive),
+                timeoutExecutor = timeoutExecutor,
+                timeoutConfig = config.timeouts,
+                requestBufferSize = config.buffers.requestBytes,
+            )
+
+        val channel =
+            InMemoryByteChannel.fromStrings(
+                listOf(
+                    "POST /large-body HTTP/1.1\r\n",
+                    "host: localhost\r\n",
+                    "transfer-encoding: chunked\r\n",
+                    "\r\n",
+                    "100\r\n",
+                    "${"a".repeat(256)}\r\n",
+                    "100\r\n",
+                    "${"b".repeat(256)}\r\n",
+                    "100\r\n",
+                    "${"c".repeat(256)}\r\n",
+                    "100\r\n",
+                    "${"d".repeat(256)}\r\n",
+                    "7\r\n",
+                    "is over\r\n",
+                    "0\r\n",
+                    "\r\n",
+                ),
+            )
+
+        val context = createContext(channel)
+        sessionHandler.handle(context)
+
+        val actual = channel.writtenText()
+
+        assertTrue(actual.startsWith("HTTP/1.1 413 Payload Too Large\r\n"))
+        assertContains(actual, "connection: close\r\n")
+    }
+
+    @Test
+    fun `handle writes payload too large response when chunk size exceeds limit`() {
+        val registry =
+            RouterRegistry().also {
+                it.register(
+                    Router {
+                        post("/large-body") { ctx ->
+                            HttpResponse.build {
+                                status = HttpStatus.OK
+                                body(ctx.bodyAsBytes())
+                            }
+                        }
+                    },
+                )
+            }
+
+        val limitConfig =
+            HttpLimitsConfig(
+                maxChunkSizeBytes = 1024,
+            )
+        val requestParser =
+            HttpRequestParser(
+                headerParser = HttpHeadersParser(limitConfig),
+                config = limitConfig,
+            )
+
+        val sessionHandler =
+            ClientSessionHandler(
+                handler = RequestHandler(requestParser, RouteResolver(registry), InterceptorRegistry()),
+                writer = responseWriter,
+                keepAliveManager = KeepAliveManager(timeoutExecutor, config.keepAlive),
+                timeoutExecutor = timeoutExecutor,
+                timeoutConfig = config.timeouts,
+                requestBufferSize = config.buffers.requestBytes,
+            )
+
+        val channel =
+            InMemoryByteChannel.fromStrings(
+                listOf(
+                    "POST /large-body HTTP/1.1\r\n",
+                    "host: localhost\r\n",
+                    "transfer-encoding: chunked\r\n",
+                    "\r\n",
+                    "401\r\n",
+                    "${"a".repeat(1025)}\r\n",
+                    "8\r\n",
+                    "non read\r\n",
+                    "0\r\n",
+                    "\r\n",
+                ),
+            )
+
+        val context = createContext(channel)
+        sessionHandler.handle(context)
+
+        val actual = channel.writtenText()
+
+        assertTrue(actual.startsWith("HTTP/1.1 413 Payload Too Large\r\n"))
+        assertContains(actual, "connection: close\r\n")
+    }
+
+    @Test
+    fun `handle does not block infinitely when body size exceeds limit during chunked request`() {
+        val registry =
+            RouterRegistry().also {
+                it.register(
+                    Router {
+                        post("/large-body") { ctx ->
+                            HttpResponse.build {
+                                status = HttpStatus.OK
+                                body(ctx.bodyAsBytes())
+                            }
+                        }
+                    },
+                )
+            }
+
+        val limitConfig =
+            HttpLimitsConfig(
+                maxRequestBodyBytes = 1025,
+            )
+        val requestParser =
+            HttpRequestParser(
+                headerParser = HttpHeadersParser(limitConfig),
+                config = limitConfig,
+            )
+
+        val sessionHandler =
+            ClientSessionHandler(
+                handler = RequestHandler(requestParser, RouteResolver(registry), InterceptorRegistry()),
+                writer = responseWriter,
+                keepAliveManager = KeepAliveManager(timeoutExecutor, config.keepAlive),
+                timeoutExecutor = timeoutExecutor,
+                timeoutConfig =
+                    config.timeouts.copy( // Ensure quick failure if it blocks
+                        readMillis = 1000,
+                        writeMillis = 1000,
+                        sessionMillis = 1000,
+                    ),
+                requestBufferSize = config.buffers.requestBytes,
+            )
+
+        // Simulate a request where the claimed chunk size is large, but body limit is exceeded quickly
+        val channel =
+            InMemoryByteChannel.fromStrings(
+                listOf(
+                    "POST /large-body HTTP/1.1\r\n",
+                    "host: localhost\r\n",
+                    "transfer-encoding: chunked\r\n",
+                    "\r\n",
+                    "1000\r\n", // Pretend it's a huge chunk (4096 bytes)
+                    "${"a".repeat(1026)}\r\n", // Actually send just enough to exceed body limit (1025)
+                    "0\r\n",
+                    "\r\n",
+                ),
+            )
+
+        val context = createContext(channel)
+
+        // If the bug exists, this call will block infinitely (or hit the 1000ms timeout we set above and fail the keep-alive silently)
+        // But we want to ensure it fails FAST due to exhaustion, not due to timeout.
+        sessionHandler.handle(context)
+
+        val actual = channel.writtenText()
+
+        assertTrue(actual.startsWith("HTTP/1.1 413 Payload Too Large\r\n"))
         assertContains(actual, "connection: close\r\n")
     }
 
